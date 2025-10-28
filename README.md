@@ -2,23 +2,18 @@
 
 Opinionated, repeatable bootstrap for a clean macOS machine. The quickstart below is meant for copy/paste on a fresh install.
 
-## Contents
-- [Quickstart (copy/paste)](#quickstart-copy-paste)
-- [Reference: Notes & Snippets](#reference-notes--snippets)
-
 ---
 
 ## Quickstart (copy/paste)
 
-Run the blocks in order. Commands that overwrite dotfiles (`~/.zshenv`, `~/.zshrc`, `~/.zimrc`, `~/.gitignore_global`) assume a clean setup—back up existing files if you care about them.
+Run the blocks in order. Commands that overwrite dotfiles (`~/.zprofile`, `~/.zshenv`, `~/.zshrc`, `~/.zimrc`, `~/.gitignore_global`) assume a clean setup—back up existing files if you care about them.
 
 ### Step 0 — Prerequisites
 
 ```bash
-xcode-select --install || true
-sudo xcodebuild -license accept 2>/dev/null || true
+xcode-select --install
 # Apple Silicon only: install Rosetta if you need x86 binaries
-sudo softwareupdate --install-rosetta --agree-to-license || true
+sudo softwareupdate --install-rosetta --agree-to-license
 ```
 
 ### Step 1 — Homebrew (CLI only)
@@ -39,16 +34,16 @@ brew install \
   fzf ripgrep fd eza bat \
   git gh jq yq git-delta \
   zoxide atuin direnv \
-  gnu-sed coreutils gnu-tar findutils gawk watch less \
+  watch less \
   btop duf dust procs \
-  openssl@3 gnupg age sops pinentry-mac \
+  openssl@3 age sops \
   make cmake ninja pkg-config \
   sqlite \
   httpie wget \
   tokei \
   mise uv \
   mas \
-  codex-cli \
+  docker \
   ollama
 ```
 
@@ -60,70 +55,103 @@ brew install postgresql@16 redis \
   dive cosign trivy oras
 ```
 
-Finalize `fzf` bindings:
+Install fzf key bindings and completions:
 
 ```bash
 "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc
 ```
 
+Start installed services (optional):
+
+```bash
+brew services start postgresql@16   # Postgres
+brew services start redis           # Redis
+brew services start ollama          # Ollama API
+brew services start atuin           # Atuin history daemon
+```
+
+(Optional but recommended for Spaceship prompt glyphs)
+
+```bash
+brew install --cask font-meslo-lg-nerd-font
+```
+
 ### Step 3 — Zsh with Zimfw
 
-#### 3.1 `~/.zshenv`
+#### 3.1 `~/.zprofile`
+
+```bash
+cat > ~/.zprofile <<'EOF'
+# Homebrew (ARM)
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# User tool paths (uv, Go, etc.)
+export PATH="$HOME/.local/bin:$HOME/go/bin:$PATH"
+EOF
+```
+
+#### 3.2 `~/.zshenv`
 
 ```bash
 cat > ~/.zshenv <<'EOF'
-export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 export HOMEBREW_NO_ANALYTICS=1
 export EDITOR="vim"
 export MANPAGER="less -R"
 EOF
 ```
 
-#### 3.2 Install Zimfw
+#### 3.3 Install Zimfw
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zimfw/install/master/install.zsh | zsh
 ```
 
-#### 3.3 `~/.zimrc`
+#### 3.4 `~/.zimrc`
 
 ```bash
-cat > ~/.zimrc <<'EOF'
+cat >| ~/.zimrc <<'EOF'
 zmodule zimfw/archive
 zmodule zimfw/git
 zmodule zimfw/input
 zmodule zimfw/termtitle
-zmodule zimfw/completion
 
-# Theme
-zmodule spaceship-prompt/spaceship-prompt --source "spaceship.zsh" --name "spaceship"
+# Theme (module options BEFORE init options)
+zmodule spaceship-prompt/spaceship-prompt -n spaceship -s "spaceship.zsh"
 
 # Plugins
 zmodule zsh-users/zsh-autosuggestions
-zmodule zdharma-continuum/fast-syntax-highlighting kind:defer
+zmodule zdharma-continuum/fast-syntax-highlighting
 zmodule Aloxaf/fzf-tab
 
+# Build preferences
 zstyle ':zim' build autoload
 EOF
 
+# 2) Install missing modules and build the init
 zimfw install
 zimfw build
+
+# 3) Activate in current shell (or just open a new terminal)
+source "${ZDOTDIR:-$HOME}/.zim/init.zsh" 2>/dev/null || true
 ```
 
-#### 3.4 `~/.zshrc`
+#### 3.5 `~/.zshrc`
 
 ```bash
-cat > ~/.zshrc <<'EOF'
+cat >| ~/.zshrc <<'EOF'
 setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_VERIFY SHARE_HISTORY
 setopt AUTO_CD EXTENDED_GLOB INTERACTIVE_COMMENTS
 bindkey -v
 export KEYTIMEOUT=1
 
-# Paths (include uv tools and Go binaries)
-eval "$(/opt/homebrew/bin/brew shellenv)"
-export PATH="$HOME/.local/bin:$HOME/go/bin:$PATH"
+# Completions: add Homebrew dirs then init (cached)
+if command -v brew >/dev/null 2>&1; then
+  fpath=("$(brew --prefix)/share/zsh-completions" "$(brew --prefix)/share/zsh/site-functions" $fpath)
+fi
+autoload -Uz compinit
+compinit -C
 
-# Load Zim (static init)
+# Load Zim
 source "${ZDOTDIR:-$HOME}/.zim/init.zsh"
 
 # Prompt: Spaceship (inline overrides)
@@ -131,17 +159,23 @@ export SPACESHIP_PROMPT_ADD_NEWLINE=true
 export SPACESHIP_CHAR_SYMBOL="❯ "
 export SPACESHIP_PROMPT_ORDER=(time user dir host git node golang docker venv python exec_time line_sep char)
 
-# fzf / zoxide / atuin / direnv
+# Tooling hooks
 eval "$(zoxide init zsh)"
 eval "$(atuin init zsh)"
 eval "$(direnv hook zsh)"
+# Global mise shims & env
+eval "$(mise activate zsh)"
+
+# fzf defaults
 export FZF_DEFAULT_COMMAND='rg --files --hidden --follow --glob "!.git"'
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND='fd -t d .'
+
+# Pager & bat
 export BAT_THEME="OneHalfDark"
 export PAGER="bat -p"
 
-# Aliases (tree via eza -T)
+# Aliases
 alias ll='eza -l --git'
 alias lt='eza -T -L 2 --git'
 alias la='eza -la --git'
@@ -177,12 +211,19 @@ uv tool install ruff
 uv tool install pre-commit
 ```
 
+Reshim:
+
+```bash
+mise reshim
+```
+
 ### Step 7 — Git sane defaults
 
 ```bash
 git config --global init.defaultBranch main
 git config --global pull.rebase true
 git config --global rebase.autosquash true
+git config --global rebase.autoStash true
 git config --global fetch.prune true
 git config --global push.autoSetupRemote true
 git config --global core.fileMode false
@@ -204,6 +245,31 @@ node_modules/
 coverage/
 EOF
 git config --global core.excludesfile ~/.gitignore_global
+```
+
+#### 7.1 — SSH keys and commit signing (recommended)
+
+Generate an SSH key, store the passphrase in Keychain, and enable SSH-based commit signing.
+
+```bash
+# Generate key (ed25519)
+ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C "$USER@$(scutil --get ComputerName)"
+
+# Start agent and store key in macOS Keychain
+eval "$(ssh-agent -s)"
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+
+# Git: sign commits with SSH
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+
+# Add your public key to your Git host (GitHub, GitLab, etc.)
+pbcopy < ~/.ssh/id_ed25519.pub  # copies the key to clipboard (macOS)
+open https://github.com/settings/ssh/new || true
+
+# Authenticate GitHub CLI (optional)
+gh auth login
 ```
 
 ### Step 8 — GUI apps (Homebrew Cask + MAS)
@@ -232,7 +298,8 @@ brew install --cask \
   logi-options+ \
   applite \
   orcaslicer \
-  
+  codex
+
 
 # After launching VS Code once, enable the `code` shell command from the Command Palette
 ```
@@ -264,6 +331,245 @@ zoxide --version
 atuin --version
 direnv --version
 btop --version
+```
+
+## VS Code setup
+
+```bash
+# AI
+code --install-extension openai.chatgpt --profile "main"
+code --install-extension GitHub.copilot --profile "main"
+code --install-extension GitHub.copilot-chat --profile "main"
+
+# Git (lightweight)
+code --install-extension mhutchie.git-graph --profile "main"
+
+# Diagnostics / UX
+code --install-extension usernamehw.errorlens --profile "main"
+code --install-extension Gruntfuggly.todo-tree --profile "main"
+code --install-extension streetsidesoftware.code-spell-checker --profile "main"
+
+# Web + lint/format
+code --install-extension dbaeumer.vscode-eslint --profile "main"
+code --install-extension esbenp.prettier-vscode --profile "main"
+
+# Python + Jupyter
+code --install-extension ms-python.python --profile "main"
+code --install-extension ms-python.vscode-pylance --profile "main"
+code --install-extension ms-toolsai.jupyter --profile "main"
+code --install-extension ms-toolsai.jupyter-renderers --profile "main"
+code --install-extension ms-toolsai.jupyter-keymap --profile "main"
+
+# Go / YAML / Markdown
+code --install-extension golang.go --profile "main"
+code --install-extension redhat.vscode-yaml --profile "main"
+code --install-extension yzhang.markdown-all-in-one --profile "main"
+code --install-extension DavidAnson.vscode-markdownlint --profile "main"
+
+# Remote & Containers
+code --install-extension ms-vscode-remote.remote-ssh --profile "main"
+code --install-extension ms-vscode-remote.remote-containers --profile "main"
+code --install-extension ms-vscode.remote-server --profile "main"
+code --install-extension ms-vscode.remote-explorer --profile "main"
+code --install-extension ms-azuretools.vscode-docker --profile "main"
+
+# Icons (keep Material; drop vscode-icons)
+code --install-extension PKief.material-icon-theme --profile "main"
+code --install-extension PKief.material-product-icons --profile "main"
+
+# Build tools
+code --install-extension ms-vscode.makefile-tools --profile "main"   # keep
+
+# IntelliCode API Usage Examples (real-world API snippets in-editor)
+code --install-extension VisualStudioExptTeam.intellicode-api-usage-examples --profile "main"
+
+# Code Runner (one-shot run scripts across many langs)
+code --install-extension formulahendry.code-runner --profile "main"
+
+# Rainbow CSV (colorized columns + CSV helpers)
+code --install-extension mechatroner.rainbow-csv --profile "main"
+
+# Mermaid for Markdown/Notebooks (keeps Mermaid current)
+code --install-extension bierner.markdown-mermaid --profile "main"
+
+# Image preview (inline gutter/hover previews of image links)
+code --install-extension kisstkondoros.vscode-gutter-preview --profile "main"
+
+# Paths & imports QoL (tiny, useful)
+code --install-extension christian-kohler.path-intellisense --profile "main"
+code --install-extension christian-kohler.npm-intellisense --profile "main"
+
+# Python: fast lint/format (ruff) – replaces/augments black/flake8/isort
+code --install-extension charliermarsh.ruff --profile "main"
+
+# TOML (pyproject/go toolchains use TOML a lot)
+code --install-extension tamasfe.even-better-toml --profile "main"
+
+# HTML tag QoL (IntelliJ-like paired tag ops)
+code --install-extension formulahendry.auto-rename-tag --profile "main"
+code --install-extension formulahendry.auto-close-tag --profile "main"
+
+# GitHub PRs/Issues panel (JetBrains-like VCS integration)
+code --install-extension GitHub.vscode-pull-request-github --profile "main"
+
+```
+
+and settings.json:
+
+```json
+{
+  // Theme & Icons
+  "workbench.colorTheme": "GitHub Dark Default",
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.productIconTheme": "material-product-icons",
+
+  // Layout / UX
+  "workbench.activityBar.location": "top",
+  "editor.minimap.enabled": false,
+  "editor.inlayHints.enabled": "on",
+  "editor.smoothScrolling": true,
+  "editor.stickyScroll.enabled": true,
+  "breadcrumbs.enabled": true,
+
+  // Save / format
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 700,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // Python / Jupyter
+  "python.analysis.typeCheckingMode": "basic",
+  "python.testing.pytestEnabled": true,
+  "notebook.lineNumbers": "on",
+  "notebook.output.textLineLimit": 2000,
+  "notebook.output.scrolling": true,
+
+  // Go
+  "gopls": {
+    "ui.semanticTokens": true,
+    "ui.completion.usePlaceholders": true
+  },
+
+  // YAML
+  "yaml.schemaStore.enable": true,
+  "yaml.format.enable": true,
+  "yaml.validate": true,
+
+  // Markdown
+  "markdown.updateLinksOnFileMove.enabled": "always",
+
+  // Git (built-in)
+  "git.autoStash": true,
+  "git.autofetch": true,
+  "git.pruneOnFetch": true,
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "git.mergeEditor": true,
+  "git.blame.editorDecoration.enabled": true,
+  "git.blame.statusBarItem.enabled": true,
+
+  // Terminal & files
+  "terminal.integrated.scrollback": 10000,
+  "search.useIgnoreFiles": true,
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/.idea": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.pytest_cache": true,
+    "**/__pycache__": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/.venv": true
+  },
+
+  // Tag rename/close without extensions
+  "editor.linkedEditing": true,
+
+  // Error Lens
+  "errorLens.enabledDiagnosticLevels": ["warning", "info", "error"],
+  "errorLens.messageEnabled": false,
+
+  // --- IntelliJ-ish editor behavior ---
+  "workbench.editor.enablePreview": false, // open files as real tabs, not preview
+  "editor.inlineSuggest.enabled": true, // lightweight inline hints (pairs well with Copilot)
+  "editor.cursorSurroundingLines": 5,
+  "editor.guides.bracketPairs": "active",
+  "editor.bracketPairColorization.enabled": true,
+
+  // --- Save / format (language-scoped defaults) ---
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[markdown]": { "editor.defaultFormatter": "DavidAnson.vscode-markdownlint" },
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // --- Explorer: file nesting ---
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "*.ts": "${capture}.test.ts, ${capture}.spec.ts, ${capture}.d.ts, ${capture}.map",
+    "*.tsx": "${capture}.test.tsx, ${capture}.spec.tsx, ${capture}.map",
+    "*.js": "${capture}.test.js, ${capture}.spec.js, ${capture}.map",
+    "*.go": "${capture}_test.go",
+    "README.md": "CHANGELOG.md, CONTRIBUTING.md, LICENSE*",
+    "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, .npmrc",
+    "go.mod": "go.sum"
+  },
+
+  // --- Project hygiene ---
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Completions
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": true,
+    "markdown": true,
+    "scminput": true
+  },
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "editor.inlineSuggest.minShowDelay": 1000,
+  "editor.inlineSuggest.edits.allowCodeShifting": "always",
+
+  // Agent Mode: on + bigger budget
+  "chat.agent.enabled": true,
+  "chat.agent.maxRequests": 200,
+  "github.copilot.chat.agent.autoFix": true,
+
+  "chat.tools.terminal.enableAutoApprove": true,
+  "chat.tools.terminal.autoApprove": {
+    // Keep these blocked
+    "curl": false,
+    "wget": false,
+    "chmod": false,
+    "chown": false,
+    "git": false
+  },
+
+  // Let Copilot answer terminal prompts on its own
+  "chat.tools.terminal.autoReplyToPrompts": true,
+
+  // Auto-accept edit suggestions after a short delay (ms)
+  "chat.editing.autoAcceptDelay": 100,
+
+  // Give Copilot more context for better autonomous changes
+  "github.copilot.chat.codesearch.enabled": true,
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.useAgentsMdFile": true,
+  "github.copilot.chat.editor.temporalContext.enabled": true
+}
 ```
 
 ---
@@ -306,25 +612,40 @@ uv pip install ruff pytest mypy
 pre-commit install
 ```
 
-### SSH commit signing (no Touch ID required)
+### GNU Make (project-local)
 
-Generate an ed25519 key, store the passphrase in the macOS Keychain, and configure Git to sign with SSH.
+- Keep default BSD `make` system-wide (no PATH shims in dotfiles).
+- Use GNU make explicitly as `gmake`, which Homebrew installs alongside `make`.
+- For projects that expect `make` to be GNU make, add a local PATH tweak via direnv:
 
 ```bash
-ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C "$USER@$(scutil --get ComputerName)"
-eval "$(ssh-agent -s)"
-ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+# .envrc (example)
+use mise
 
-git config --global gpg.format ssh
-git config --global user.signingkey ~/.ssh/id_ed25519.pub
-git config --global commit.gpgsign true
+# Prefer gnu make for this project only
+export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"
 ```
 
-Add the public key to your Git host for verified signatures.
+Now `make` resolves to GNU make within the project, while the rest of the system keeps BSD `make`.
 
-### Fonts for Spaceship prompt
+### Build flags (SQLite) — project-local
 
-Install a Nerd Font (e.g. **MesloLGS NF**) in your terminal profile to render prompt symbols correctly.
+Prefer project-local flags via direnv or your build system instead of global shell dotfiles. Example for Homebrew SQLite:
+
+```bash
+# .envrc (example)
+use mise
+
+export LDFLAGS="-L$(brew --prefix)/opt/sqlite/lib"
+export CPPFLAGS="-I$(brew --prefix)/opt/sqlite/include"
+export PKG_CONFIG_PATH="$(brew --prefix)/opt/sqlite/lib/pkgconfig"
+```
+
+Avoid placing these in `~/.zshrc` or `~/.zprofile` unless you want the flags globally for every project.
+
+### Homebrew services — not in dotfiles
+
+Use `brew services start …` manually when you actually need a daemon. Do not put `brew services` commands in shell dotfiles; they are one-time actions and can slow or hang shells if invoked on every login.
 
 ### Copy/paste snippets
 
@@ -354,16 +675,16 @@ select = ["E","F","I","UP","B","C90","PERF"]
 help: ; @grep -E '^[a-zA-Z_-]+:.*?##' Makefile | sed -E 's/:.*?##/ –/'
 
 fmt: ## format code
-	@command -v ruff >/dev/null && ruff format .
-	@command -v gofumpt >/dev/null && gofumpt -w .
+ @command -v ruff >/dev/null && ruff format .
+ @command -v gofumpt >/dev/null && gofumpt -w .
 
 lint: ## lint (py+go)
-	@command -v ruff >/dev/null && ruff check .
-	@command -v golangci-lint >/dev/null && golangci-lint run
+ @command -v ruff >/dev/null && ruff check .
+ @command -v golangci-lint >/dev/null && golangci-lint run
 
 test: ## run tests
-	@command -v pytest >/dev/null && pytest -q
-	@command -v go >/dev/null && go test ./...
+ @command -v pytest >/dev/null && pytest -q
+ @command -v go >/dev/null && go test ./...
 ```
 
 #### `.golangci.yml` (compact defaults)
@@ -375,4 +696,79 @@ linters:
   enable: [govet, staticcheck, gofumpt, revive]
 issues:
   exclude-use-default: false
+```
+
+#### Cheatsheet
+
+```bash
+# =========
+# Navigation & history — zoxide, atuin, fzf
+# =========
+z foo                # jump to a directory you've visited matching "foo" (zoxide)
+zi proj              # interactive dir jump (zoxide) with fzf UI
+# history: fuzzy search across all shells (atuin). Try: Ctrl-R, then type
+atuin search "docker run"    # non-interactive history search
+
+# =========
+# Find & search — ripgrep, fd, fzf
+# =========
+rg -n "TODO|FIXME"                    # fast code search with line numbers
+fd -t d src                           # list directories under ./src
+# open a ripgrep match in $EDITOR via fzf (preview on the right)
+rg -n "" | fzf --ansi --preview 'bat --style=numbers --color=always {1}' \
+  | awk -F: '{print "+"$2" "$1}' | xargs -r ${EDITOR:-vim}
+
+# =========
+# Listing & viewing — eza, bat, less
+# =========
+ll                                   # long view with git info (alias to eza)
+lt                                   # small tree (alias to eza -T -L 2)
+bat README.md                        # pretty file view with syntax highlighting
+less -R +G big.log                   # open at end, keep ANSI colors
+
+# =========
+# JSON/YAML — jq, yq
+# =========
+curl -s https://httpbin.org/get | jq '.headers."User-Agent"'
+yq '.spec.template.spec.containers[].image' k8s/deploy.yaml
+
+# =========
+# Git & GitHub — git, delta, gh
+# =========
+git log --oneline --graph --decorate -20 | less -R
+git diff                              # rendered with delta (pager config)
+gh repo clone owner/repo
+gh pr create --fill --draft && gh pr view --web
+
+# =========
+# Per-project env & tools — direnv, mise, uv
+# =========
+direnv allow                         # loads .envrc (e.g., mise tool versions, flags)
+mise use -g python@3.14 golang@1.25  # set global toolchains
+uv venv && uv pip install -e .       # fast Python venv + editable install
+uvx ruff check . && uvx pytest -q    # run tools without polluting global PATH
+
+# =========
+# System monitors — btop, duf, dust, procs
+# =========
+btop                                  # interactive CPU/Mem/Proc/Net dashboard
+duf                                   # mounted disks usage (human-friendly)
+dust -r . | head                      # "du" but readable, largest dirs first
+procs --watch 2                       # modern 'ps' with live refresh
+
+# =========
+# HTTP & downloads — httpie, wget, openssl
+# =========
+http GET https://api.github.com/repos/owner/repo
+http POST https://httpbin.org/post hello=world
+wget -qO artifact.tgz https://example.com/build.tgz
+openssl dgst -sha256 artifact.tgz     # verify checksum
+
+# =========
+# Secrets — age, sops (with age)
+# =========
+age-keygen -o ~/.config/age/key.txt
+export SOPS_AGE_KEY_FILE=~/.config/age/key.txt
+sops -e -i secrets.yaml               # edit+encrypt in place
+sops -d secrets.yaml > secrets.clear.yaml
 ```
