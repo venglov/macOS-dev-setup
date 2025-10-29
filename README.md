@@ -33,7 +33,7 @@ brew install \
   zsh zsh-completions \
   fzf ripgrep fd eza bat \
   git gh jq yq git-delta \
-  zoxide atuin direnv \
+  zoxide atuin \
   watch less \
   btop duf dust procs \
   openssl@3 age sops \
@@ -162,7 +162,6 @@ export SPACESHIP_PROMPT_ORDER=(time user dir host git node golang docker venv py
 # Tooling hooks
 eval "$(zoxide init zsh)"
 eval "$(atuin init zsh)"
-eval "$(direnv hook zsh)"
 # Global mise shims & env
 eval "$(mise activate zsh)"
 
@@ -200,6 +199,7 @@ mise use -g golang@1.25
 go install golang.org/x/tools/gopls@latest
 go install github.com/go-delve/delve/cmd/dlv@latest
 go install honnef.co/go/tools/cmd/staticcheck@latest
+go install mvdan.cc/gofumpt@latest
 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
 ```
@@ -329,7 +329,6 @@ go version
 fzf --version
 zoxide --version
 atuin --version
-direnv --version
 btop --version
 ```
 
@@ -377,8 +376,7 @@ code --install-extension ms-azuretools.vscode-docker --profile "main"
 code --install-extension PKief.material-icon-theme --profile "main"
 code --install-extension PKief.material-product-icons --profile "main"
 
-# Build tools
-code --install-extension ms-vscode.makefile-tools --profile "main"   # keep
+# Build tools (Makefile not used; skip Makefile Tools)
 
 # IntelliCode API Usage Examples (real-world API snippets in-editor)
 code --install-extension VisualStudioExptTeam.intellicode-api-usage-examples --profile "main"
@@ -576,78 +574,78 @@ and settings.json:
 
 ## Reference: Notes & Snippets
 
-### Ruff instead of Black
-
-Use Ruff for both linting *and* formatting to keep the Python toolchain fast and simple. Configure it per repository in `pyproject.toml`.
-
 ### Install locations worth knowing
 
 - **mise** selects language/tool versions; it does not host packages itself.
 - **Go** `go install …` drops binaries in `~/go/bin` (or `$GOBIN`), compiled with Go **1.25** (managed by mise).
 - **uv (global tools)** installs shims in `~/.local/bin` with tool data in `~/Library/Application Support/uv/tools/...`.
-- **uv (per-project)** uses `uv venv` + `uv pip install` in `./.venv`, leveraging Python **3.14** from mise.
+- **uv (per-project)** uses `uv venv` + `uv sync` in `./.venv`, leveraging Python from mise.
 
-### Per-project bootstrap (mise + direnv + uv)
+#### mise.toml
 
-```bash
-# .mise.toml
+```toml
+# mise.toml
 [tools]
 python = "3.14"
 golang = "1.25"
 
 [env]
+# Put simple env vars here
 PIP_DISABLE_PIP_VERSION_CHECK = "1"
+
+[tasks.bootstrap]
+description = "First-time setup: venv + deps + git hooks"
+run = '''
+if [ ! -d ".venv" ]; then
+  uv venv
+fi
+uv sync
+uv run pre-commit install -f --install-hooks
+'''
+
+[tasks.test]
+description = "Run Python tests (pytest)"
+run = "uv run pytest -q"
+
+[tasks.test-go]
+description = "Run Go tests"
+run = "go test ./..."
+
+[tasks.precommit]
+run = "uv run pre-commit run --all-files"
+
+[tasks.fmt]
+description = "Format code (ruff + gofumpt)"
+run = '''
+ruff format .
+gofumpt -w .
+'''
+
+[tasks.lint]
+description = "Lint (ruff + golangci-lint)"
+run = '''
+ruff check .
+golangci-lint run
+'''
+
+[tasks.sync]
+description = "Sync Python deps (uv)"
+run = "uv sync"
+
+[tasks.ci]
+run = '''
+mise run fmt
+mise run lint
+mise run test
+mise run test-go
+'''
 ```
 
-```bash
-# .envrc
-use mise
-```
+Usage:
 
-```bash
-direnv allow
-uv venv
-uv pip install -e .
-uv pip install ruff pytest mypy
-pre-commit install
-```
-
-### GNU Make (project-local)
-
-- Keep default BSD `make` system-wide (no PATH shims in dotfiles).
-- Use GNU make explicitly as `gmake`, which Homebrew installs alongside `make`.
-- For projects that expect `make` to be GNU make, add a local PATH tweak via direnv:
-
-```bash
-# .envrc (example)
-use mise
-
-# Prefer gnu make for this project only
-export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"
-```
-
-Now `make` resolves to GNU make within the project, while the rest of the system keeps BSD `make`.
-
-### Build flags (SQLite) — project-local
-
-Prefer project-local flags via direnv or your build system instead of global shell dotfiles. Example for Homebrew SQLite:
-
-```bash
-# .envrc (example)
-use mise
-
-export LDFLAGS="-L$(brew --prefix)/opt/sqlite/lib"
-export CPPFLAGS="-I$(brew --prefix)/opt/sqlite/include"
-export PKG_CONFIG_PATH="$(brew --prefix)/opt/sqlite/lib/pkgconfig"
-```
-
-Avoid placing these in `~/.zshrc` or `~/.zprofile` unless you want the flags globally for every project.
-
-### Homebrew services — not in dotfiles
-
-Use `brew services start …` manually when you actually need a daemon. Do not put `brew services` commands in shell dotfiles; they are one-time actions and can slow or hang shells if invoked on every login.
-
-### Copy/paste snippets
+- First time: `mise install` then `mise run bootstrap`
+- Later: `mise run test` and `mise run precommit`
+- If you use hooks: you may need `mise trust` once to allow hooks
 
 #### `pyproject.toml` (Ruff formatting & linting)
 
@@ -665,26 +663,37 @@ target-version = "py314"
 quote-style = "double"
 
 [tool.ruff.lint]
-select = ["E","F","I","UP","B","C90","PERF"]
+select = ["E","F","I","UP","B","C90","PERF","N","RUF"]
+ignore = []
 ```
 
-#### `Makefile` (Go + Python helpers)
+#### .pre-commit-config.yaml
 
-```make
-.PHONY: help lint test fmt
-help: ; @grep -E '^[a-zA-Z_-]+:.*?##' Makefile | sed -E 's/:.*?##/ –/'
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+      - id: ruff-format
 
-fmt: ## format code
- @command -v ruff >/dev/null && ruff format .
- @command -v gofumpt >/dev/null && gofumpt -w .
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
 
-lint: ## lint (py+go)
- @command -v ruff >/dev/null && ruff check .
- @command -v golangci-lint >/dev/null && golangci-lint run
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.60.3
+    hooks:
+      - id: golangci-lint
 
-test: ## run tests
- @command -v pytest >/dev/null && pytest -q
- @command -v go >/dev/null && go test ./...
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.3
+    hooks:
+      - id: gitleaks
+
 ```
 
 #### `.golangci.yml` (compact defaults)
@@ -694,11 +703,15 @@ run:
   timeout: 3m
 linters:
   enable: [govet, staticcheck, gofumpt, revive]
+linters-settings:
+  gofumpt:
+    extra-rules: true
 issues:
   exclude-use-default: false
+
 ```
 
-#### Cheatsheet
+### Cheatsheet
 
 ```bash
 # =========
@@ -715,8 +728,11 @@ atuin search "docker run"    # non-interactive history search
 rg -n "TODO|FIXME"                    # fast code search with line numbers
 fd -t d src                           # list directories under ./src
 # open a ripgrep match in $EDITOR via fzf (preview on the right)
-rg -n "" | fzf --ansi --preview 'bat --style=numbers --color=always {1}' \
-  | awk -F: '{print "+"$2" "$1}' | xargs -r ${EDITOR:-vim}
+rg --line-number --no-heading --color=always 'TODO|FIXME' \
+| fzf --ansi --delimiter : \
+      --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
+| awk -F: '{print "+"$2" "$1}' \
+| xargs -r ${EDITOR:-vim}
 
 # =========
 # Listing & viewing — eza, bat, less
@@ -741,12 +757,18 @@ gh repo clone owner/repo
 gh pr create --fill --draft && gh pr view --web
 
 # =========
-# Per-project env & tools — direnv, mise, uv
+# Per-project env & tools — mise, uv
 # =========
-direnv allow                         # loads .envrc (e.g., mise tool versions, flags)
 mise use -g python@3.14 golang@1.25  # set global toolchains
-uv venv && uv pip install -e .       # fast Python venv + editable install
-uvx ruff check . && uvx pytest -q    # run tools without polluting global PATH
+mise run bootstrap                   # project setup (venv + deps + hooks)
+mise run fmt && mise run lint        # format and lint via tasks
+
+# uv basics (project-local Python)
+uv venv                              # create .venv in the project
+uv sync                              # install/update deps from pyproject/lock into .venv
+uv run pytest -q                     # run in the project's .venv
+ruff check .                         # use global ruff (via mise or brew)
+source .venv/bin/activate            # optional: activate venv for interactive shell
 
 # =========
 # System monitors — btop, duf, dust, procs
