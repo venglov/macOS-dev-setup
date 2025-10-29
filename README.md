@@ -197,10 +197,11 @@ mise use -g golang@1.25
 
 ```bash
 go install golang.org/x/tools/gopls@latest
+go install golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest
 go install github.com/go-delve/delve/cmd/dlv@latest
 go install honnef.co/go/tools/cmd/staticcheck@latest
 go install mvdan.cc/gofumpt@latest
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
 ```
 
@@ -581,6 +582,14 @@ and settings.json:
 - **uv (global tools)** installs shims in `~/.local/bin` with tool data in `~/Library/Application Support/uv/tools/...`.
 - **uv (per-project)** uses `uv venv` + `uv sync` in `./.venv`, leveraging Python from mise.
 
+### Go modernization (optional)
+
+Modernize analyzes code and suggests adopting newer Go idioms and features.
+
+- Review suggestions: `modernize ./...`
+- Apply in place: `modernize -w ./...`
+- Via tasks: `mise run modernize` or `mise run modernize-apply`
+
 #### mise.toml
 
 ```toml
@@ -628,6 +637,14 @@ ruff check .
 golangci-lint run
 '''
 
+[tasks.modernize]
+description = "Suggest Go modernizations"
+run = "modernize ./..."
+
+[tasks.modernize-apply]
+description = "Apply Go modernizations (writes)"
+run = "modernize -w ./..."
+
 [tasks.sync]
 description = "Sync Python deps (uv)"
 run = "uv sync"
@@ -646,6 +663,7 @@ Usage:
 - First time: `mise install` then `mise run bootstrap`
 - Later: `mise run test` and `mise run precommit`
 - If you use hooks: you may need `mise trust` once to allow hooks
+- Go modernization: `mise run modernize` (review) or `mise run modernize-apply` (apply)
 
 #### `pyproject.toml` (Ruff formatting & linting)
 
@@ -685,7 +703,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.60.3
+    rev: v2.6.0
     hooks:
       - id: golangci-lint
 
@@ -699,16 +717,41 @@ repos:
 #### `.golangci.yml` (compact defaults)
 
 ```yaml
-run:
-  timeout: 3m
-linters:
-  enable: [govet, staticcheck, gofumpt, revive]
-linters-settings:
-  gofumpt:
-    extra-rules: true
-issues:
-  exclude-use-default: false
+version: "2"
 
+run:
+  tests: true
+  modules-download-mode: readonly
+  go: "1.25"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - unused
+    - revive
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling
+      - common-false-positives
+
+issues:
+  new: true
+  new-from-merge-base: main
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofumpt
+  # Optional: uncomment and set your module for stricter formatting
+  # settings:
+  #   gofumpt:
+  #     module-path: github.com/yourorg/yourrepo
 ```
 
 ### Cheatsheet
