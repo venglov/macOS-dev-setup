@@ -203,6 +203,7 @@ go install honnef.co/go/tools/cmd/staticcheck@latest
 go install mvdan.cc/gofumpt@latest
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
+go install -tags 'postgres mysql sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 ```
 
 ### Step 6 — Python fast path (`uv`)
