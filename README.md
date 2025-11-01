@@ -44,7 +44,8 @@ brew install \
   mise uv \
   mas \
   docker \
-  ollama
+  ollama \
+  sqlc
 ```
 
 **Optional tooling** (only if you actively use these categories):
