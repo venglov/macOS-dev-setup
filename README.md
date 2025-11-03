@@ -45,7 +45,8 @@ brew install \
   mas \
   docker \
   ollama \
-  sqlc
+  sqlc \
+  tmux
 ```
 
 **Optional tooling** (only if you actively use these categories):
@@ -165,6 +166,8 @@ eval "$(zoxide init zsh)"
 eval "$(atuin init zsh)"
 # Global mise shims & env
 eval "$(mise activate zsh)"
+eval "$(uv generate-shell-completion zsh)"
+eval "$(uvx --generate-shell-completion zsh)"
 
 # fzf defaults
 export FZF_DEFAULT_COMMAND='rg --files --hidden --follow --glob "!.git"'
