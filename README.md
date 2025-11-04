@@ -195,6 +195,7 @@ EOF
 ```bash
 mise use -g python@3.14
 mise use -g golang@1.25
+mise use -g node@lts
 ```
 
 ### Step 5 — Go tools (built with mise’s Go)
