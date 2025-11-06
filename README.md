@@ -305,7 +305,8 @@ brew install --cask \
   logi-options+ \
   applite \
   orcaslicer \
-  codex
+  codex \
+  obsidian
 
 
 # After launching VS Code once, enable the `code` shell command from the Command Palette
@@ -353,7 +354,6 @@ code --install-extension mhutchie.git-graph --profile "main"
 # Diagnostics / UX
 code --install-extension usernamehw.errorlens --profile "main"
 code --install-extension Gruntfuggly.todo-tree --profile "main"
-code --install-extension streetsidesoftware.code-spell-checker --profile "main"
 
 # Web + lint/format
 code --install-extension dbaeumer.vscode-eslint --profile "main"
@@ -370,7 +370,6 @@ code --install-extension ms-toolsai.jupyter-keymap --profile "main"
 code --install-extension golang.go --profile "main"
 code --install-extension redhat.vscode-yaml --profile "main"
 code --install-extension yzhang.markdown-all-in-one --profile "main"
-code --install-extension DavidAnson.vscode-markdownlint --profile "main"
 
 # Remote & Containers
 code --install-extension ms-vscode-remote.remote-ssh --profile "main"
