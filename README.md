@@ -45,16 +45,7 @@ brew install \
   mas \
   docker \
   ollama \
-  sqlc \
-  tmux
-```
-
-**Optional tooling** (only if you actively use these categories):
-
-```bash
-brew install postgresql@16 redis \
-  kubectl k9s helm kubectx stern \
-  dive cosign trivy oras
+  sqlc
 ```
 
 Install fzf key bindings and completions:
@@ -66,8 +57,6 @@ Install fzf key bindings and completions:
 Start installed services (optional):
 
 ```bash
-brew services start postgresql@16   # Postgres
-brew services start redis           # Redis
 brew services start ollama          # Ollama API
 brew services start atuin           # Atuin history daemon
 ```
@@ -307,7 +296,6 @@ brew install --cask \
   orcaslicer \
   codex \
   obsidian
-
 
 # After launching VS Code once, enable the `code` shell command from the Command Palette
 ```
@@ -555,8 +543,6 @@ and settings.json:
   "chat.tools.terminal.enableAutoApprove": true,
   "chat.tools.terminal.autoApprove": {
     // Keep these blocked
-    "curl": false,
-    "wget": false,
     "chmod": false,
     "chown": false,
     "git": false
