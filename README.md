@@ -372,9 +372,6 @@ code --install-extension PKief.material-product-icons --profile "main"
 
 # Build tools (Makefile not used; skip Makefile Tools)
 
-# IntelliCode API Usage Examples (real-world API snippets in-editor)
-code --install-extension VisualStudioExptTeam.intellicode-api-usage-examples --profile "main"
-
 # Code Runner (one-shot run scripts across many langs)
 code --install-extension formulahendry.code-runner --profile "main"
 
@@ -386,10 +383,6 @@ code --install-extension bierner.markdown-mermaid --profile "main"
 
 # Image preview (inline gutter/hover previews of image links)
 code --install-extension kisstkondoros.vscode-gutter-preview --profile "main"
-
-# Paths & imports QoL (tiny, useful)
-code --install-extension christian-kohler.path-intellisense --profile "main"
-code --install-extension christian-kohler.npm-intellisense --profile "main"
 
 # Python: fast lint/format (ruff) – replaces/augments black/flake8/isort
 code --install-extension charliermarsh.ruff --profile "main"
