@@ -168,11 +168,53 @@ export BAT_THEME="OneHalfDark"
 export PAGER="bat -p"
 
 # Aliases
-alias ll='eza -l --git'
-alias lt='eza -T -L 2 --git'
-alias la='eza -la --git'
+
+# --- navigation / directories ---
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+
+alias c='z'
+alias cd='z'
+
+# --- ls / eza ---
+alias ls='eza --group-directories-first'
+alias ll='ls -l --git'
+alias la='ls -la --git'
+alias lt='ls -T -L 2 --git'
+
+# --- cat / bat / pager ---
+# PAGER is already set to bat in your config; these make direct usage nice.
+alias cat='bat --paging=never'       # behaves close to cat, no paging
+alias less='bat'                     # whenever you type "less", you get bat pager
+
+# --- grep / ripgrep ---
+# Not 100% drop-in (options differ), but great for interactive usage.
+alias grep='rg --hidden --glob "!.git"'
 alias rgp='rg --hidden --glob "!.git"'
-alias g=git
+
+# --- find / fd ---
+# fd is *not* a drop-in for find, so keep the real find for scripts & weird flags?
+alias find='fd --hidden --follow --exclude .git'
+
+# If you really want "find" to yell at you so you stop using it manually:
+# alias find='echo "Use fd (ff) instead" >&2'
+
+# --- processes / system info ---
+alias top='btop'
+alias ps='procs'
+alias du='dust'     # disk usage summary
+alias df='duf'      # disk free
+
+# --- git quality-of-life ---
+alias g='git'
+alias ga='git add'
+alias gc='git commit'
+alias gco='git checkout'
+alias gst='git status -sb'
+alias gl='git log --oneline --graph --decorate'
+
+# --- sudo last command ---
 alias please='sudo $(fc -ln -1)'
 
 zmodload zsh/complist 2>/dev/null
