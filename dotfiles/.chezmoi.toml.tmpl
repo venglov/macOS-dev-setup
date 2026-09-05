@@ -1,0 +1,12 @@
+{{- $zsh := promptBoolOnce . "zsh" "Manage zsh startup files" (eq .chezmoi.os "darwin") -}}
+{{- $terminal := promptBoolOnce . "terminal" "Configure terminal UX (install its CLI profile separately)" false -}}
+{{- $tmux := promptBoolOnce . "tmux" "Manage optional tmux config" false -}}
+{{- $ghostty := promptBoolOnce . "ghostty" "Manage Ghostty config (macOS only)" (eq .chezmoi.os "darwin") -}}
+[data]
+zsh = {{ $zsh }}
+terminal = {{ $terminal }}
+tmux = {{ $tmux }}
+ghostty = {{ $ghostty }}
+
+[diff]
+pager = "cat"

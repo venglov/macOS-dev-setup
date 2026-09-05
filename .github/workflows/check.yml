@@ -1,0 +1,48 @@
+name: Check
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Test dependencies in the disposable runner
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            sudo apt-get update
+            sudo apt-get install --no-install-recommends -y zsh
+            asset=linux_amd64
+            digest=9f97d32caca166e5c92160ec3a9325519809c38963121cef38173142065c981f
+          else
+            test "$(uname -m)" = arm64
+            asset=darwin_arm64
+            digest=938d422091cc001e68fe3fd7efea9b923a36facbf2b8db67063639abbaf72de2
+          fi
+          test_tools=$(mktemp -d "$RUNNER_TEMP/chezmoi.XXXXXXXX")
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            "https://github.com/twpayne/chezmoi/releases/download/v2.72.1/chezmoi_2.72.1_$asset.tar.gz" \
+            --output "$test_tools/chezmoi.tar.gz"
+          python - "$test_tools/chezmoi.tar.gz" "$digest" <<'PY'
+          import hashlib, pathlib, sys
+          assert hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest() == sys.argv[2]
+          PY
+          tar -xzf "$test_tools/chezmoi.tar.gz" -C "$test_tools" chezmoi
+          echo "$test_tools" >> "$GITHUB_PATH"
+      - name: Non-mutating repository checks and isolated tests
+        run: ./verify repo
+      - name: Check source stayed unchanged
+        run: git diff --exit-code

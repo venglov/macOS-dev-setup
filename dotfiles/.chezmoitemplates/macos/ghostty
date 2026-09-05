@@ -1,0 +1,4 @@
+# Keep native font, theme and key bindings; Ctrl-R passes through to the shell.
+font-size = 13
+window-padding-x = 8
+window-padding-y = 8

@@ -1,0 +1,20 @@
+{{ if not .zsh }}
+.zshenv
+.zprofile
+.zshrc
+{{ end }}
+{{ if not .terminal }}
+.config/atuin
+.config/starship.toml
+.config/git/delta
+{{ end }}
+{{ if not .tmux }}
+.tmux.conf
+{{ end }}
+{{ if or (ne .chezmoi.os "darwin") (not .ghostty) }}
+.config/ghostty
+{{ end }}
+{{ if ne .chezmoi.os "darwin" }}
+.config/git/macos
+.ssh
+{{ end }}

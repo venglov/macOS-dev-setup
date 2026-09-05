@@ -1,0 +1,44 @@
+# Interactive zsh only. No alias modules, login-shell changes or auto-start tmux.
+[[ -o interactive ]] || return
+typeset -U path PATH fpath
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=10000
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY
+setopt INC_APPEND_HISTORY INTERACTIVE_COMMENTS
+bindkey -e
+
+# compinit performs its permission audit; do not bypass it with compinit -C.
+{{ if eq .chezmoi.os "darwin" }}
+{{ template "macos/completions.zsh" . }}
+{{ end }}
+autoload -Uz compinit
+compinit
+
+if (( $+commands[mise] )); then
+    eval "$(mise activate zsh)"
+fi
+{{ if .terminal }}
+if (( $+commands[fzf] )); then
+    # fzf >= 0.48. Ctrl-R is reserved for Atuin even if Atuin is missing.
+    export FZF_CTRL_R_COMMAND=''
+    if (( $+commands[fd] )); then
+        export FZF_CTRL_T_COMMAND='fd --type f --hidden --exclude .git'
+        export FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+    fi
+    source <(fzf --zsh)
+fi
+if (( $+commands[zoxide] )); then
+    eval "$(zoxide init zsh --cmd z)"
+fi
+if (( $+commands[atuin] )); then
+    # Preserve the normal Up key; Ctrl-R belongs to Atuin.
+    eval "$(atuin init zsh --disable-up-arrow)"
+fi
+if (( $+commands[starship] )); then
+    eval "$(starship init zsh)"
+fi
+{{ end }}
+{{ if eq .chezmoi.os "darwin" }}
+{{ template "macos/shell-extras.zsh" . }}
+{{ end }}

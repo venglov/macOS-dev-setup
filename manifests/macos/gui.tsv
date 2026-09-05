@@ -1,0 +1,9 @@
+id	cask	source	update	manual_steps
+ghostty	ghostty	https://ghostty.org/download	brew-cask	Main terminal; open settings and review local config
+vscode	visual-studio-code	https://code.visualstudio.com/download	brew-cask	Enable code command; review Workspace Trust and selected extensions
+orbstack	orbstack	https://orbstack.dev/download	brew-cask	Review license; first launch and Docker integration; no separate Docker formula
+raycast	raycast	https://www.raycast.com	brew-cask	Review requested Accessibility permissions and hotkey
+obsidian	obsidian	https://obsidian.md/download	brew-cask	Choose vault; review sync and community plugins separately
+chrome	google-chrome	https://www.google.com/chrome/	brew-cask	Choose default browser and sync preferences
+stats	stats	https://github.com/exelban/stats	brew-cask	Choose sensors and login item explicitly
+beekeeper	beekeeper-studio	https://www.beekeeperstudio.io/get	brew-cask	Import connection details securely; no saved credentials in Git

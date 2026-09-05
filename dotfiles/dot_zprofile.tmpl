@@ -1,0 +1,7 @@
+# Login environment. Agents should receive an explicit PATH; see docs/projects.md.
+typeset -U path PATH
+{{ if eq .chezmoi.os "darwin" }}
+{{ template "macos/zprofile.zsh" . }}
+{{ end }}
+path=("$HOME/.local/bin" $path)
+export PATH

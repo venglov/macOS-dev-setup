@@ -1,0 +1,3 @@
+# Repository-only generated files. No global project exclusions.
+__pycache__/
+.test-output/

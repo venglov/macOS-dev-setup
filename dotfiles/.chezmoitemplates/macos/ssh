@@ -1,0 +1,7 @@
+# Inactive until explicitly included from ~/.ssh/config. See docs/ssh.md.
+Host github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519_github
+    IdentitiesOnly yes
+    AddKeysToAgent yes
+    UseKeychain yes
