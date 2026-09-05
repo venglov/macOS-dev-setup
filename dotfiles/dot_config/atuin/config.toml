@@ -1,0 +1,8 @@
+# Local history only. Account creation, import and sync are separate decisions.
+auto_sync = false
+update_check = false
+enter_accept = false
+secrets_filter = true
+
+[daemon]
+enabled = false

@@ -1,0 +1,15 @@
+# Catalog for individual selection, not a bulk installation script.
+# Python (the Python extension can install Pylance as a dependency)
+ms-python.python
+charliermarsh.ruff
+# Go
+golang.go
+# Web: only when the project uses these tools
+dbaeumer.vscode-eslint
+esbenp.prettier-vscode
+# Data/config files
+tamasfe.even-better-toml
+redhat.vscode-yaml
+# Remote access; select separately
+ms-vscode-remote.remote-ssh
+ms-vscode-remote.remote-containers

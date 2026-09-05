@@ -1,0 +1,11 @@
+{
+  "security.workspace.trust.enabled": true,
+  "editor.minimap.enabled": false,
+  "editor.linkedEditing": true,
+  "editor.formatOnSave": false,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "git.confirmSync": true,
+  "git.enableSmartCommit": false,
+  "terminal.integrated.scrollback": 10000
+}

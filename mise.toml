@@ -1,0 +1,4 @@
+# Tasks require no language runtime or .zshrc activation.
+[tasks.check]
+description = "Offline checks; Python 3.11+ and chezmoi must already be installed"
+run = "./verify repo"

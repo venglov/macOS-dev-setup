@@ -1,0 +1,3 @@
+# Read by non-interactive zsh too: no commands, PATH rewriting or output.
+export EDITOR="${EDITOR:-vi}"
+export PAGER="${PAGER:-less}"

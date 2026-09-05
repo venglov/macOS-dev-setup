@@ -1,0 +1,120 @@
+#!/bin/sh
+# Read-only checks, except `signing`, which creates and removes a scratch repo.
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+. "$ROOT/scripts/common.sh"
+
+case ${1:-help} in
+    help|--help|-h)
+        cat <<'EOF'
+Usage: ./verify common | macos [PROFILE ...] | ssh | signing | repo
+  common    Selected dotfiles, required commands and effective Git settings
+  macos     Platform prerequisites and installed CLI profiles (no upgrades)
+  ssh       macOS agent and GitHub SSH configuration, without connecting
+  signing   Sign and verify a throwaway commit with your configured SSH key
+  repo      Offline repository checks and isolated integration tests
+EOF
+        exit 0 ;;
+    repo)
+        [ "$#" -eq 1 ] || die 'repo takes no arguments'
+        need python3
+        exec python3 "$ROOT/tests/check.py" ;;
+esac
+setup_context
+action=$1
+shift
+status=0
+check_command() {
+    if command -v "$1" >/dev/null 2>&1; then
+        printf 'OK command: %s\n' "$1"
+    else
+        printf 'MISSING command: %s\n' "$1" >&2
+        status=1
+    fi
+}
+case $action in
+    common)
+        [ "$#" -eq 0 ] || die 'common takes no arguments'
+        for tool in git chezmoi mise; do check_command "$tool"; done
+        [ "$status" -eq 0 ] || exit "$status"
+        [ -f "$CONFIG" ] || die 'Run common init first.'
+        if cm verify --include=files,symlinks; then printf 'OK dotfiles match selected source\n'; else status=1; fi
+        if [ "$(cm execute-template '{{ .zsh }}')" = true ]; then
+            check_command zsh
+        fi
+        if [ "$(cm execute-template '{{ .terminal }}')" = true ]; then
+            for tool in starship atuin fzf fd rg zoxide delta; do check_command "$tool"; done
+            if command -v fzf >/dev/null 2>&1 && ! fzf --zsh >/dev/null 2>&1; then
+                printf 'UPDATE fzf: shell integration requires fzf >= 0.48\n' >&2
+                status=1
+            fi
+            if [ "$(git config --get core.pager || :)" != delta ] ||
+                [ "$(git config --get interactive.diffFilter || :)" != 'delta --color-only' ]; then
+                printf 'REVIEW: effective Git settings override the Delta integration.\n' >&2
+                status=1
+            fi
+        fi
+        if [ "$(cm execute-template '{{ .tmux }}')" = true ]; then check_command tmux; fi
+        for key in core.ignorecase core.fileMode; do
+            if git config --global --get "$key" >/dev/null 2>&1; then
+                printf 'REVIEW global %s: let Git detect this per repository.\n' "$key" >&2
+                status=1
+            fi
+        done
+        if [ "$(git config --get core.excludesFile || :)" != '~/.config/git/ignore' ]; then
+            printf 'REVIEW: another Git excludesFile overrides the managed ignore.\n' >&2
+            status=1
+        fi
+        if ! git config --get user.name >/dev/null 2>&1 || ! git config --get user.email >/dev/null 2>&1; then
+            printf 'NEXT: configure your Git identity locally; see docs/common.md.\n'
+        fi
+        ;;
+    macos)
+        . "$ROOT/platforms/macos/bootstrap.sh"
+        cli_packages check "$@"
+        ;;
+    ssh)
+        [ "$#" -eq 0 ] || die 'ssh takes no arguments'
+        [ "$(uname -s)" = Darwin ] || die 'This agent check is for macOS; see docs/ssh.md for other Unix.'
+        [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ] || die 'No reachable agent socket; open a normal macOS login session.'
+        if /usr/bin/ssh-add -l; then :; else
+            printf 'NEXT: load your key with /usr/bin/ssh-add --apple-use-keychain; see docs/ssh.md.\n' >&2
+            status=1
+        fi
+        # Config expansion only. No DNS connection, trust changes or login.
+        /usr/bin/ssh -G git@github.com | awk '$1 ~ /^(hostname|user|identityfile|identitiesonly|addkeystoagent|usekeychain)$/ {print}'
+        printf 'Inspect these values. Network authentication is a separate manual test in docs/ssh.md.\n'
+        ;;
+    signing)
+        [ "$#" -eq 0 ] || die 'signing takes no arguments'
+        need git
+        need ssh-keygen
+        [ "$(git config --get gpg.format || :)" = ssh ] || die 'Configure gpg.format=ssh first.'
+        signer_name=$(git config --get user.name) || die 'Missing user.name'
+        signer_email=$(git config --get user.email) || die 'Missing user.email'
+        signer_key=$(git config --path --get user.signingKey) || die 'Missing user.signingKey'
+        allowed_signers=$(git config --path --get gpg.ssh.allowedSignersFile) || die 'Missing gpg.ssh.allowedSignersFile'
+        [ -f "$allowed_signers" ] || die 'allowedSignersFile does not exist.'
+        signing_program=$(git config --path --get gpg.ssh.program || printf '%s' ssh-keygen)
+        umask 077
+        scratch=$(mktemp -d "${TMPDIR:-/tmp}/unix-setup-signing.XXXXXXXX")
+        trap 'rm -rf "$scratch"' EXIT
+        trap 'exit 1' HUP INT TERM
+        # Inherited repository routing must never redirect the scratch writes.
+        unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE
+        unset GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+        unset GIT_CONFIG GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS
+        export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+        git init -q "$scratch"
+        tree=$(git -C "$scratch" hash-object -w -t tree --stdin < /dev/null)
+        commit=$(printf 'Local SSH signing verification\n' | git -C "$scratch" \
+            -c user.name="$signer_name" -c user.email="$signer_email" \
+            -c gpg.format=ssh -c user.signingKey="$signer_key" \
+            -c gpg.ssh.program="$signing_program" commit-tree -S "$tree")
+        git -C "$scratch" -c gpg.ssh.program="$signing_program" \
+            -c gpg.ssh.allowedSignersFile="$allowed_signers" verify-commit "$commit"
+        printf 'OK: local signing and verification; no remote upload or project commit.\n'
+        ;;
+    *) die 'Unknown verification command; use ./verify --help.' ;;
+esac
+exit "$status"

@@ -1,0 +1,54 @@
+#!/bin/sh
+# POSIX sh; also runs with the system Bash 3.2 on macOS.
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+. "$ROOT/scripts/common.sh"
+
+usage() {
+    cat <<'EOF'
+Usage: ./bootstrap COMMAND
+  plan                             Show the dependency order (no changes)
+  common init                      Choose dotfile options; no dotfiles applied
+  common diff                      Preview the selected dotfiles
+  common apply                     Diff, confirmation, backup, chezmoi apply
+  common restore SNAPSHOT          Preview paths, confirm, restore a backup
+  macos prepare                    Check OS, architecture, CLT and Homebrew
+  macos install [PROFILE ...]       Install core + selected CLI profiles
+  macos update [PROFILE ...]        Update installed CLI in those profiles
+  macos gui list                    Show the GUI catalog
+  macos gui install APP ...         Install only named GUI apps
+  macos gui update APP ...          Update only named GUI apps
+
+Profiles: manifests/macos/cli/*.Brewfile (core is always included).
+No command changes the login shell, installs runtimes, or starts services.
+EOF
+}
+
+case ${1:-help} in
+    help|--help|-h) usage ;;
+    plan)
+        [ "$#" -eq 1 ] || die 'plan takes no arguments'
+        cat <<'EOF'
+1. Read docs/common.md; select the tools you need.
+2. macOS: prerequisites in docs/macos.md, then macos prepare/install.
+   Other Unix: provision Git, chezmoi and mise for your OS separately.
+3. common init -> common diff -> common apply -> ./verify common.
+4. macOS: select GUI apps; complete SSH/Keychain and editor setup manually.
+5. Review each project; pin runtimes, then use mise exec / mise run.
+Steam Deck and Proxmox provisioning are not implemented.
+EOF
+        ;;
+    common)
+        shift
+        setup_context
+        . "$ROOT/scripts/dotfiles.sh"
+        dotfiles_command "$@"
+        ;;
+    macos)
+        shift
+        setup_context
+        . "$ROOT/platforms/macos/bootstrap.sh"
+        macos_command "$@"
+        ;;
+    *) usage >&2; die 'unknown command; no changes made' ;;
+esac
