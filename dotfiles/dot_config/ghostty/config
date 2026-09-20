@@ -1,7 +1,20 @@
-# Native font; Ctrl-R passes through to the shell.
-font-size = 13
-window-padding-x = 8
-window-padding-y = 8
+# Follow macOS appearance with the bundled GitHub palettes.
+theme = light:GitHub Light Default,dark:GitHub Dark Default
+
+# Subtle transparency with blur for a readable background.
+background-opacity = 0.94
+background-blur = 20
+
+# Use Ghostty's bundled font with a little more breathing room.
+font-size = 14
+window-padding-x = 12
+window-padding-y = 10
+window-padding-balance = true
+
+# Keep the cursor steady and hide the mouse pointer while typing.
+cursor-style = bar
+cursor-style-blink = false
+mouse-hide-while-typing = true
 
 # Left Option handles shell shortcuts; right Option keeps macOS character input.
 macos-option-as-alt = left

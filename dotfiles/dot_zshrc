@@ -31,7 +31,7 @@ if (( $+commands[fzf] )); then
     source <(fzf --zsh)
 fi
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh --cmd z)"
-(( $+commands[atuin] )) && eval "$(atuin init zsh --disable-up-arrow)"
+(( $+commands[atuin] )) && eval "$(atuin init zsh)"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 
 # Install/update modules explicitly with zimfw install/update, never at shell startup.
