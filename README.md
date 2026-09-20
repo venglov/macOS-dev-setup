@@ -1,18 +1,19 @@
 # Unix setup
 
-A small CLI environment: shared dotfiles, one macOS Brewfile, and the commands below.
+A CLI workstation: shared dotfiles, one macOS Brewfile, and the commands below.
 No custom installer, package profiles, automatic services, or login-shell changes.
 
-- `dotfiles/` — Git, zsh, mise, Starship and Atuin; Ghostty settings on macOS.
-- `Brewfile` — the macOS CLI base. GUI apps and extras are opt-in below.
+- `dotfiles/` — Git, zsh with Zimfw, mise, Starship and Atuin; Ghostty settings on macOS.
+- `Brewfile` — the macOS CLI tools, including the previously optional tools.
 - `.chezmoiroot` — tells chezmoi to manage only `dotfiles/` in this checkout.
+- [CLI cheatsheet](docs/cheatsheet.md) — alternatives to standard commands and examples.
 
 ## Shared Unix base
 
 | Purpose | Tools |
 | --- | --- |
 | Configuration and projects | Git, chezmoi, mise |
-| Prompt and history | Starship, Atuin |
+| Shell, prompt and history | Zimfw, Starship, Atuin |
 | Search and navigation | fzf, fd, ripgrep, zoxide |
 | Diffs and structured data | Delta, jq |
 
@@ -58,7 +59,7 @@ To recover your pre-setup files, restore your backup. Disabling zsh in
 
 `.zshenv` sets only EDITOR/PAGER defaults. `.zprofile` handles login PATH and
 Homebrew on macOS. `.zshrc` contains interactive integrations and completions.
-Use the system zsh on macOS; no shell framework or patched font is required.
+Use the system zsh on macOS with Zimfw. Starship supplies the prompt; no patched font is required.
 
 - **Ctrl-R:** Atuin history. Enter puts a selection on the command line for review.
 - **Ctrl-T / Alt-C:** fzf file / directory selection. Its Ctrl-R binding is disabled.
@@ -66,10 +67,40 @@ Use the system zsh on macOS; no shell framework or patched font is required.
 - Atuin is local-only by default: no sync, update check or daemon. Import old history
   with `atuin import auto` only if wanted; account creation and sync are separate.
 
-There are no supplied shell or Git aliases. If your terminal's Option key produces
+Zim's Git module supplies uppercase aliases such as `G`, `Gws` and `Gwd`.
+The old aliases replacing `ls`, `cat`, `grep`, `find`, etc. are not installed;
+use the alternatives by name as shown in the [cheatsheet](docs/cheatsheet.md).
+If your terminal's Option key produces
 characters instead of Alt-C, adjust its modifier settings or use `fd` and `fzf` directly.
 [Bindings: fzf](https://github.com/junegunn/fzf#setting-up-shell-integration),
 [Atuin](https://docs.atuin.sh/latest/configuration/key-binding/).
+
+### Zim setup
+
+The Brewfile installs Zimfw, zsh-completions, autosuggestions and syntax highlighting.
+After applying dotfiles, install the modules declared in `~/.zimrc`:
+
+```sh
+zsh -lic 'zimfw install'
+```
+
+Then open a new terminal tab. Zim provides archive helpers, Git aliases, input
+bindings, terminal titles and fzf-tab completion. It loads the Homebrew copies of
+autosuggestions and syntax highlighting on macOS. On Linux it downloads those
+two plugins alongside the other modules. See [Zim installation](https://zimfw.sh/docs/install/).
+If your Linux package manager does not provide Zim, install its manager first:
+
+```sh
+mkdir -p "$HOME/.zim"
+curl --fail --location --output "$HOME/.zim/zimfw.zsh" \
+  https://github.com/zimfw/zimfw/releases/download/v1.20.1/zimfw.zsh
+```
+
+Module installation needs network access. Run `zimfw install` after editing the
+managed `.zimrc` and applying it; use `zimfw update` to update downloaded modules.
+Ordinary shell startup only loads the generated `~/.zim/init.zsh`; it does not
+download or update anything. Before the first install the base shell still works.
+Homebrew updates the manager and the two packaged plugins on macOS.
 
 ## macOS preparation
 
@@ -88,7 +119,7 @@ eval "$(/opt/homebrew/bin/brew shellenv zsh)"  # Apple Silicon
 # Intel: use /usr/local/bin/brew instead.
 ```
 
-4. Get the repository and install the CLI base:
+4. Get the repository and install the CLI tools:
 
 ```sh
 git clone https://github.com/venglov/macOS-dev-setup.git
@@ -97,26 +128,27 @@ brew bundle install --no-upgrade --file=Brewfile
 brew install --cask ghostty
 ```
 
-Continue with [Apply dotfiles](#apply-dotfiles), then open a new Ghostty tab.
+Continue with [Apply dotfiles](#apply-dotfiles) and [Zim setup](#zim-setup), then open a new Ghostty tab.
 `--no-upgrade` avoids routine upgrades on reruns; Homebrew can still update a
 required dependency when installing a new package. [Bundle reference](https://docs.brew.sh/Brew-Bundle-and-Brewfile).
 
-### Optional tools and apps
+### Included CLI tools and optional apps
 
-Install individual tools when you need them, e.g. `brew install uv tmux`.
-There are no extra profiles to configure.
+All tools in this table are installed by the Brewfile. There are no extra profiles.
 
 | Tool | When useful |
 | --- | --- |
 | `uv` | Python environments and project dependencies; Python itself stays in mise |
 | `bat`, `eza` | File previews and directory listings, called by their own names |
 | `tmux` | SSH and long sessions; start it explicitly |
-| `btop`, `dust` | Interactive monitoring and disk investigation; bottom is an alternative to btop |
+| `btop`, `duf`, `dust`, `procs`, `watch` | Processes, disk usage and repeated command output |
 | `cmake`, `ninja`, `pkgconf`, `make` | Projects needing more than Apple CLT; GNU Make is `gmake` |
-| `neovim`, `lazygit` | Optional terminal editor / Git UI |
+| `neovim`, `lazygit` | Terminal editor / Git UI |
 | `hyperfine`, `watchexec`, `just` | Benchmarking, file watching, or a project with a Justfile |
-| `zsh-autosuggestions`, `zsh-syntax-highlighting` | Small shell extras; loaded if installed with Homebrew |
+| `zimfw`, `zsh-completions`, `zsh-autosuggestions`, `zsh-syntax-highlighting` | Shell modules, completion, suggestions and highlighting |
 | `gh`, `age`, `sops` | GitHub CLI or a specific secrets workflow |
+| `yq`, `httpie`, `wget` | YAML queries, HTTP APIs and downloads |
+| `openssl@3`, `sqlite`, `sqlc`, `tokei`, `less` | Crypto/TLS tooling, SQL, code generation, source statistics and paging |
 
 For GUI apps, the installation source is **Homebrew Cask**. Select apps separately
 with `brew install --cask NAME`; the Brewfile contains no GUI apps.
@@ -143,8 +175,18 @@ auto-accept settings. [VS Code security](https://code.visualstudio.com/docs/agen
 ## Git and SSH
 
 Git defaults live in `~/.config/git/config`. Your existing `~/.gitconfig` has higher
-priority and is not overwritten. Set your identity there with `git config --global --edit`;
-keep private overrides in that file or `~/.config/git/local`.
+priority and is not overwritten. Create or edit that exact file for your identity:
+
+```sh
+git config --file "$HOME/.gitconfig" user.name "Your Name"
+git config --file "$HOME/.gitconfig" user.email "you@example.com"
+git config --file "$HOME/.gitconfig" --edit
+```
+
+Keep private overrides there or in `~/.config/git/local`. On a fresh home,
+`git config --global --edit` would open the managed `~/.config/git/config` instead
+if `~/.gitconfig` does not exist; a later chezmoi apply could overwrite those edits.
+[Git config file selection](https://git-scm.com/docs/git-config#Documentation/git-config.txt---global).
 
 Delta is a pager, not a `diff.tool`. No global `core.ignorecase` or `core.fileMode`
 is set; Git should detect these per repository. Global ignore covers only macOS
@@ -230,7 +272,7 @@ Quote paths. Avoid splitting filenames with `awk -F:` or whitespace-based `xargs
 for arbitrary filenames, keep NUL delimiters throughout a pipeline. In Ghostty,
 Ctrl-T inserts selected paths into the command line; `z` never replaces `cd`.
 
-With optional tools installed: `bat README.md`, `eza -la`, `btop`, `dust .`,
+More installed tools: `bat README.md`, `eza -la`, `btop`, `dust .`,
 `hyperfine 'your-command'`, or `watchexec -e go -- go test ./...`.
 For long sessions use `tmux new -s work`, detach with Ctrl-B then D, and return
 with `tmux attach -t work`.
@@ -242,6 +284,7 @@ brew update
 brew upgrade --formula                    # All installed CLI, no GUI
 brew upgrade --cask --greedy ghostty        # Only the named GUI app; close it first
 brew bundle check --no-upgrade --file=Brewfile
+zimfw update                              # Downloaded Zim modules; in interactive zsh
 chezmoi diff
 chezmoi verify
 ```
@@ -251,8 +294,9 @@ Review repository changes before applying dotfiles again. Brewfile records the t
 set, not exact binary versions; pin project dependencies separately. No automatic
 cleanup, service startup or OS preference changes are part of this setup.
 
-CI renders and reapplies dotfiles in a temporary home on macOS and Linux, and checks
-zsh syntax. It does not provision a workstation or exercise GUI/Keychain integration.
+CI renders and reapplies dotfiles in a temporary home on macOS and Linux. It checks
+Git identity persistence, zsh syntax and login Homebrew initialization on macOS.
+It does not install Zim modules or exercise GUI/Keychain integration.
 
 ## Later platforms
 

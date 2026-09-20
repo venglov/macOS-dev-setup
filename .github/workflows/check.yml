@@ -48,10 +48,20 @@ jobs:
           printf 'yes\n' | cm init
           cm diff
           cm apply
+          env -i HOME="$test_home" PATH="$PATH" git config --file "$test_home/.gitconfig" user.name 'Setup Test'
+          env -i HOME="$test_home" PATH="$PATH" git config --file "$test_home/.gitconfig" user.email setup@example.invalid
           cm apply
           cm verify
+          test "$(env -i HOME="$test_home" PATH="$PATH" git config --global user.email)" = setup@example.invalid
           zsh -n "$test_home/.zshenv"
           zsh -n "$test_home/.zprofile"
           zsh -n "$test_home/.zshrc"
+          zsh -n "$test_home/.zimrc"
           test "$(env -i HOME="$test_home" PATH=/usr/bin:/bin zsh -c 'printf ok')" = ok
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            env -i HOME="$test_home" PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/zsh -lc '
+              [[ $HOMEBREW_PREFIX == /opt/homebrew ]] &&
+              [[ ${commands[brew]} == /opt/homebrew/bin/brew ]]
+            '
+          fi
           git diff --exit-code

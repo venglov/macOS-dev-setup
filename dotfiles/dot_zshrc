@@ -9,12 +9,18 @@ setopt INC_APPEND_HISTORY INTERACTIVE_COMMENTS
 bindkey -e
 
 if [[ -n "$HOMEBREW_PREFIX" ]]; then
-    fpath=("$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath)
+    fpath=("$HOMEBREW_PREFIX/share/zsh-completions" "$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath)
 fi
 autoload -Uz compinit
 compinit
 
 (( $+commands[mise] )) && eval "$(mise activate zsh)"
+if (( $+commands[uv] )); then
+    eval "$(uv generate-shell-completion zsh)"
+fi
+if (( $+commands[uvx] )); then
+    eval "$(uvx --generate-shell-completion zsh)"
+fi
 if (( $+commands[fzf] )); then
     # Disable fzf's history binding before initialization: Ctrl-R is Atuin's.
     export FZF_CTRL_R_COMMAND=''
@@ -28,11 +34,21 @@ fi
 (( $+commands[atuin] )) && eval "$(atuin init zsh --disable-up-arrow)"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 
-# Optional Homebrew plugins; syntax highlighting stays last.
-if [[ -n "$HOMEBREW_PREFIX" ]]; then
-    for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
-        [[ -r "$HOMEBREW_PREFIX/share/$plugin/$plugin.zsh" ]] &&
-            source "$HOMEBREW_PREFIX/share/$plugin/$plugin.zsh"
+# Install/update modules explicitly with zimfw install/update, never at shell startup.
+ZIM_HOME="$HOME/.zim"
+zimfw() {
+    local manager
+    for manager in "${HOMEBREW_PREFIX}/opt/zimfw/share/zimfw.zsh" \
+        "$ZIM_HOME/zimfw.zsh" /usr/share/zimfw/zimfw.zsh; do
+        if [[ -r "$manager" ]]; then
+            source "$manager" "$@"
+            return $?
+        fi
     done
-    unset plugin
+    print -u2 'Install zimfw first; see README.md (Zim setup).'
+    return 127
+}
+if [[ -r "$ZIM_HOME/init.zsh" ]]; then
+    # fzf-tab follows compinit; autosuggestions and highlighting follow fzf-tab.
+    source "$ZIM_HOME/init.zsh"
 fi

@@ -1,12 +1,51 @@
-# macOS CLI base. GUI apps and optional tools are listed in README.md.
+# macOS CLI workstation. GUI apps remain separate in README.md.
 brew "git"
 brew "chezmoi"
 brew "mise"
+brew "gh"
+
+# System zsh + Zim. Zim loads these Homebrew plugins without downloading copies.
+brew "zimfw"
+brew "zsh-completions"
+brew "zsh-autosuggestions"
+brew "zsh-syntax-highlighting"
 brew "starship"
 brew "atuin"
 brew "fzf"
 brew "fd"
 brew "ripgrep"
 brew "zoxide"
+brew "bat"
+brew "eza"
+brew "less"
+brew "tmux"
+brew "neovim"
+brew "lazygit"
 brew "git-delta"
+
+# Structured data, HTTP, databases and secrets.
 brew "jq"
+brew "yq"
+brew "httpie"
+brew "wget"
+brew "openssl@3"
+brew "sqlite"
+brew "sqlc"
+brew "age"
+brew "sops"
+
+# Monitoring, project dependencies, builds and automation.
+brew "btop"
+brew "duf"
+brew "dust"
+brew "procs"
+brew "watch"
+brew "uv"
+brew "cmake"
+brew "ninja"
+brew "pkgconf" # Current formula name; provides pkg-config.
+brew "make" # GNU Make is gmake on macOS.
+brew "tokei"
+brew "hyperfine"
+brew "watchexec"
+brew "just"
