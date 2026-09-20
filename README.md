@@ -1,202 +1,191 @@
-# Unix setup
+# macOS development setup
 
-A CLI workstation: shared dotfiles, one macOS Brewfile, and the commands below.
-No custom installer, package profiles, automatic services, or login-shell changes.
+A manual setup for development, everyday use and terminal work. Follow the steps
+in order on a fresh Mac; use the [cheatsheet](docs/cheatsheet.md) afterwards.
 
-- `dotfiles/` — Git, zsh with Zimfw, mise, Starship and Atuin; Ghostty settings on macOS.
-- `Brewfile` — the macOS CLI tools, including the previously optional tools.
-- `.chezmoiroot` — tells chezmoi to manage only `dotfiles/` in this checkout.
-- [CLI cheatsheet](docs/cheatsheet.md) — alternatives to standard commands and examples.
+- [Brewfile](Brewfile) — everyday CLI tools; [Brewfile.optional](Brewfile.optional) — extras.
+- `dotfiles/` — Git, zsh/Zimfw, mise, Starship, Atuin and Ghostty configurations.
+- `.chezmoiroot` — limits chezmoi to `dotfiles/` in this checkout.
+- [Other platforms](docs/platforms.md) — shared dotfiles on Linux and platform limits.
 
-## Shared Unix base
+## 1. Prepare macOS
 
-| Purpose | Tools |
+Use a native terminal on Apple Silicon and check
+[Homebrew's supported macOS versions](https://docs.brew.sh/Installation).
+Intel support is best effort. Install Rosetta only when an app requires it.
+
+Review these settings manually; choose the comfort settings to suit you.
+
+| Where | Setup |
 | --- | --- |
-| Configuration and projects | Git, chezmoi, mise |
-| Shell, prompt and history | Zimfw, Starship, Atuin |
-| Search and navigation | fzf, fd, ripgrep, zoxide |
-| Diffs and structured data | Delta, jq |
+| General → Software Update | Install updates; keep automatic security updates enabled |
+| Privacy & Security → FileVault | Enable it and keep the recovery method accessible outside this Mac |
+| Touch ID & Password; Lock Screen | Register a fingerprint; require a password immediately after locking |
+| Apple Account → iCloud | Enable Find My Mac; choose what to sync |
+| General → Sharing; Login Items & Extensions | Enable only services and startup apps you use |
+| Keyboard | Choose layouts, language-switch shortcut and key-repeat speed; avoid hotkey conflicts |
+| Trackpad; Desktop & Dock | Set gestures, scrolling and Dock behavior to taste |
+| Finder → Settings → Advanced; View menu | Show filename extensions and the path bar |
 
-**On a fresh Mac, do [macOS preparation](#macos-preparation) first.** On Linux,
-install these tools using your distribution's packages or their official releases,
-then clone this repository. Homebrew and systemd are not required by the dotfiles.
-Package names can differ: the shell expects `fd`, `rg` and `delta` on PATH.
+[FileVault reference](https://support.apple.com/guide/mac-help/protect-data-on-your-mac-with-filevault-mh11785/mac).
 
-Use Git 2.35+, chezmoi 2.x, a current mise and fzf 0.48+. The optional shell config
-uses zsh 5.9; other shells can use the Git/mise configs without adopting zsh.
-This setup uses standard `~/.config` paths and `ZDOTDIR=$HOME`. Run as your own
-user, without sudo. Other BSD/Unix systems need tool compatibility checked first.
+### Optional: Touch ID for sudo
 
-### Apply dotfiles
-
-From your local checkout:
+On macOS 14+ with Touch ID configured, use Apple's local PAM file:
 
 ```sh
-chezmoi init --source "$PWD"
-chezmoi diff
+sudo cp -n /etc/pam.d/sudo_local.template /etc/pam.d/sudo_local
+sudoedit /etc/pam.d/sudo_local
 ```
 
-Initialization saves this checkout as the source and asks whether to manage zsh.
-It does not apply dotfiles. If you already use chezmoi, merge these files into your
-existing source instead of replacing its configuration.
+`cp -n` preserves an existing file. Uncomment this line (or add it once if absent):
 
-Review the diff and back up the existing files it lists before continuing.
-Chezmoi is not a backup service; use your normal home backup or Time Machine.
-Keep local changes you need by editing the source before applying.
+```text
+auth       sufficient     pam_tid.so
+```
+
+Test in a local terminal, outside tmux or SSH:
 
 ```sh
-chezmoi apply
-chezmoi verify
+sudo -k
+sudo -v
 ```
 
-Repeat `diff` → `apply` after changes. An unchanged source can be reapplied safely.
-To undo a source change, revert it in Git, review the diff, and apply again.
-To recover your pre-setup files, restore your backup. Disabling zsh in
-`chezmoi edit-config` stops managing its files; it does not remove existing ones.
-[Chezmoi's workflow](https://www.chezmoi.io/user-guide/command-overview/).
+Touch ID should be offered when available; password authentication remains the
+fallback. `sudo_local` survives system updates. To undo, comment out the same
+line. Leave `/etc/pam.d/sudo` unchanged; the shipped `sudo_local.template` explains
+this mechanism.
 
-### Shell behavior
+## 2. Install Homebrew and CLI tools
 
-`.zshenv` sets only EDITOR/PAGER defaults. `.zprofile` handles login PATH and
-Homebrew on macOS. `.zshrc` contains interactive integrations and completions.
-Use the system zsh on macOS with Zimfw. Starship supplies the prompt; no patched font is required.
-
-- **Ctrl-R:** Atuin history. Enter puts a selection on the command line for review.
-- **Ctrl-T / Alt-C:** fzf file / directory selection. Its Ctrl-R binding is disabled.
-- **`z project`:** jump with zoxide. `cd`, `ls`, `cat`, `grep`, etc. stay unchanged.
-- Atuin is local-only by default: no sync, update check or daemon. Import old history
-  with `atuin import auto` only if wanted; account creation and sync are separate.
-
-Zim's Git module supplies uppercase aliases such as `G`, `Gws` and `Gwd`.
-The old aliases replacing `ls`, `cat`, `grep`, `find`, etc. are not installed;
-use the alternatives by name as shown in the [cheatsheet](docs/cheatsheet.md).
-If your terminal's Option key produces
-characters instead of Alt-C, adjust its modifier settings or use `fd` and `fzf` directly.
-[Bindings: fzf](https://github.com/junegunn/fzf#setting-up-shell-integration),
-[Atuin](https://docs.atuin.sh/latest/configuration/key-binding/).
-
-### Zim setup
-
-The Brewfile installs Zimfw, zsh-completions, autosuggestions and syntax highlighting.
-After applying dotfiles, install the modules declared in `~/.zimrc`:
-
-```sh
-zsh -lic 'zimfw install'
-```
-
-Then open a new terminal tab. Zim provides archive helpers, Git aliases, input
-bindings, terminal titles and fzf-tab completion. It loads the Homebrew copies of
-autosuggestions and syntax highlighting on macOS. On Linux it downloads those
-two plugins alongside the other modules. See [Zim installation](https://zimfw.sh/docs/install/).
-If your Linux package manager does not provide Zim, install its manager first:
-
-```sh
-mkdir -p "$HOME/.zim"
-curl --fail --location --output "$HOME/.zim/zimfw.zsh" \
-  https://github.com/zimfw/zimfw/releases/download/v1.20.1/zimfw.zsh
-```
-
-Module installation needs network access. Run `zimfw install` after editing the
-managed `.zimrc` and applying it; use `zimfw update` to update downloaded modules.
-Ordinary shell startup only loads the generated `~/.zim/init.zsh`; it does not
-download or update anything. Before the first install the base shell still works.
-Homebrew updates the manager and the two packaged plugins on macOS.
-
-## macOS preparation
-
-Use a native terminal on Apple Silicon. Homebrew uses `/opt/homebrew` there and
-`/usr/local` on Intel. This route targets macOS 14+; Intel is best effort under
-[Homebrew's current support policy](https://docs.brew.sh/Installation).
-Rosetta is only needed for an app that actually requires it.
-
-1. Run `xcode-select --install` and finish the Command Line Tools dialog.
-2. Install Homebrew using its [official instructions](https://docs.brew.sh/Installation).
-   Review the installer before running it. Keep its installation separate from dotfiles.
-3. Add Homebrew to the current terminal session:
+Run `xcode-select --install` and finish the Command Line Tools dialog. Then install
+Homebrew using its [official instructions](https://docs.brew.sh/Installation),
+reviewing the installer first. Add it to this terminal session:
 
 ```sh
 eval "$(/opt/homebrew/bin/brew shellenv zsh)"  # Apple Silicon
 # Intel: use /usr/local/bin/brew instead.
 ```
 
-4. Get the repository and install the CLI tools:
+Clone the repository and install the base tools as your own user:
 
 ```sh
 git clone https://github.com/venglov/macOS-dev-setup.git
 cd macOS-dev-setup
 brew bundle install --no-upgrade --file=Brewfile
-brew install --cask ghostty
 ```
 
-Continue with [Apply dotfiles](#apply-dotfiles) and [Zim setup](#zim-setup), then open a new Ghostty tab.
-`--no-upgrade` avoids routine upgrades on reruns; Homebrew can still update a
-required dependency when installing a new package. [Bundle reference](https://docs.brew.sh/Brew-Bundle-and-Brewfile).
+The base covers Git/GitHub, dotfiles, runtime management, shell integrations, search,
+navigation, file/data inspection and basic monitoring. Both Brewfiles explain
+each package. For extras, install individual tools or the whole optional set:
 
-### Included CLI tools and optional apps
+```sh
+brew install tmux                         # Example: just one extra
+# Or install all optional tools:
+brew bundle install --no-upgrade --file=Brewfile.optional
+```
 
-All tools in this table are installed by the Brewfile. There are no extra profiles.
+Optional tools include terminal editors/UIs, HTTP clients, SQL tools, age/SOPS,
+build tools and project automation. Removing a package from a Brewfile does not
+uninstall it. `--no-upgrade` avoids routine upgrades on reruns; new dependencies
+can still require upgrades. [Bundle reference](https://docs.brew.sh/Brew-Bundle-and-Brewfile).
 
-| Tool | When useful |
-| --- | --- |
-| `uv` | Python environments and project dependencies; Python itself stays in mise |
-| `bat`, `eza` | File previews and directory listings, called by their own names |
-| `tmux` | SSH and long sessions; start it explicitly |
-| `btop`, `duf`, `dust`, `procs`, `watch` | Processes, disk usage and repeated command output |
-| `cmake`, `ninja`, `pkgconf`, `make` | Projects needing more than Apple CLT; GNU Make is `gmake` |
-| `neovim`, `lazygit` | Terminal editor / Git UI |
-| `hyperfine`, `watchexec`, `just` | Benchmarking, file watching, or a project with a Justfile |
-| `zimfw`, `zsh-completions`, `zsh-autosuggestions`, `zsh-syntax-highlighting` | Shell modules, completion, suggestions and highlighting |
-| `gh`, `age`, `sops` | GitHub CLI or a specific secrets workflow |
-| `yq`, `httpie`, `wget` | YAML queries, HTTP APIs and downloads |
-| `openssl@3`, `sqlite`, `sqlc`, `tokei`, `less` | Crypto/TLS tooling, SQL, code generation, source statistics and paging |
+## 3. Install applications
 
-For GUI apps, the installation source is **Homebrew Cask**. Select apps separately
-with `brew install --cask NAME`; the Brewfile contains no GUI apps.
+Install the terminal, then choose any other apps you need:
+
+```sh
+brew install --cask ghostty
+# Example: brew install --cask visual-studio-code orbstack
+```
 
 | Cask | Manual setup |
 | --- | --- |
-| `ghostty` | Main terminal; config is `~/.config/ghostty/config` |
-| `visual-studio-code` | Enable the `code` command; choose language extensions |
+| `ghostty` | Main terminal; configured in the next step |
+| `visual-studio-code` | Enable the `code` command; see [IDE setup](docs/cheatsheet.md#vs-code-and-project-runtimes) |
 | `orbstack` | Review licensing, launch once and enable Docker integration |
-| `raycast` | Choose hotkey and permissions; check architecture support |
+| `raycast` | Choose a hotkey and grant the permissions its features need |
 | `obsidian` | Choose a vault and sync policy |
 
-OrbStack provides Docker tooling: do not add a second Docker CLI by default.
-After launching it, check `docker context show`, `docker version` and
-`docker compose version`. [OrbStack documentation](https://docs.orbstack.dev/docker/).
-For Ghostty, check for an older config in `~/Library/Application Support/com.mitchellh.ghostty/`
-before keeping two competing files. [Config locations](https://ghostty.org/docs/config).
+OrbStack supplies Docker tooling. After launching it, check `docker context show`,
+`docker version` and `docker compose version`.
+[OrbStack documentation](https://docs.orbstack.dev/docker/).
 
-For VS Code, keep Workspace Trust and tool approvals enabled. Install extensions
-per project/language instead of a large global list; let extension dependencies
-supply companions such as Pylance. Do not copy old auto-approve, auto-reply or
-auto-accept settings. [VS Code security](https://code.visualstudio.com/docs/agents/run/security).
+## 4. Apply dotfiles and start the shell
 
-## Git and SSH
+From the repository checkout:
 
-Git defaults live in `~/.config/git/config`. Your existing `~/.gitconfig` has higher
-priority and is not overwritten. Create or edit that exact file for your identity:
+```sh
+chezmoi init --source "$PWD"
+chezmoi diff
+```
+
+Initialization saves this checkout as the source and asks whether to manage zsh;
+choose yes for the shell setup below. If you already use chezmoi, merge these files
+into your existing source instead of replacing its configuration.
+
+Review the diff and back up the files it lists with Time Machine or your usual
+backup. Keep local changes you need by editing the source before applying.
+For Ghostty, check for an older config in
+`~/Library/Application Support/com.mitchellh.ghostty/` to avoid competing settings.
+[Config locations](https://ghostty.org/docs/config).
+
+```sh
+chezmoi apply
+chezmoi verify
+zsh -lic 'zimfw install'    # If you chose to manage zsh; needs network access
+```
+
+Open a new Ghostty tab. The setup uses system zsh, standard `~/.config` paths and
+`ZDOTDIR=$HOME`. `.zshenv` sets EDITOR/PAGER defaults, `.zprofile` handles login PATH,
+and `.zshrc` loads interactive integrations.
+
+| Action | Behavior |
+| --- | --- |
+| Ctrl-R | Atuin history; Enter inserts a selection for review, another Enter runs it |
+| Ctrl-T / left Option-C | fzf file / directory selection |
+| Tab | fzf-tab completion |
+| Right arrow at end of line | Accept an autosuggestion |
+| Ctrl-X, then Ctrl-E | Edit the command line in EDITOR |
+| `z project` / `zi` | Jump to a visited directory / choose one interactively |
+
+Zim manages input bindings, fzf-tab, autosuggestions and syntax highlighting.
+Homebrew owns the two packaged plugins on macOS. Ghostty handles terminal titles;
+Git commands and standard utilities keep their normal names. Starship needs no
+patched font. Right Option retains macOS character input.
+
+Atuin stays local: no sync, update check or daemon. Import previous history with
+`atuin import auto` if wanted. Ordinary shell startup does not install or update
+Zim modules; run `zimfw install` after changing `.zimrc` and applying it.
+[Zim documentation](https://zimfw.sh/docs/commands/).
+
+For tabs, panes and SSH terminal compatibility, see
+[Ghostty in the cheatsheet](docs/cheatsheet.md#ghostty-and-ssh).
+
+## 5. Connect Git and GitHub
+
+Keep your identity in `~/.gitconfig`; it takes precedence over the shared config:
 
 ```sh
 git config --file "$HOME/.gitconfig" user.name "Your Name"
 git config --file "$HOME/.gitconfig" user.email "you@example.com"
-git config --file "$HOME/.gitconfig" --edit
+git config --show-origin --get user.email
 ```
 
-Keep private overrides there or in `~/.config/git/local`. On a fresh home,
-`git config --global --edit` would open the managed `~/.config/git/config` instead
-if `~/.gitconfig` does not exist; a later chezmoi apply could overwrite those edits.
-[Git config file selection](https://git-scm.com/docs/git-config#Documentation/git-config.txt---global).
+Private overrides can also live in `~/.config/git/local`. Avoid editing the managed
+`~/.config/git/config` directly; chezmoi can overwrite those changes.
 
-Delta is a pager, not a `diff.tool`. No global `core.ignorecase` or `core.fileMode`
-is set; Git should detect these per repository. Global ignore covers only macOS
-litter, leaving `.vscode`, dependencies and build outputs to each project's `.gitignore`.
-If migrating old settings, use `git config --show-origin --get KEY` to find overrides.
+Choose one authentication route. **HTTPS** is the shorter setup:
 
-For macOS SSH, reuse an existing key or create a passphrase-protected key with
-`ssh-keygen -t ed25519`; never overwrite an existing key. Use the session's agent
-instead of starting another one in every shell. In your own `~/.ssh/config`, add
-or adjust a host block using your actual key path:
+```sh
+gh auth login --hostname github.com --git-protocol https --web
+# Answer yes when asked to authenticate Git with your GitHub credentials.
+gh auth status
+```
+
+For **SSH**, reuse a key or run `ssh-keygen -t ed25519` to create a passphrase-protected
+key; never overwrite an existing one. Add or adjust this block in `~/.ssh/config`,
+using your actual key path:
 
 ```sshconfig
 Host github.com
@@ -207,102 +196,75 @@ Host github.com
     UseKeychain yes
 ```
 
-Use `UseKeychain` only on macOS. Load the key with
-`/usr/bin/ssh-add --apple-use-keychain ~/.ssh/id_ed25519`, register its public key
-as an authentication key, and test `ssh -T git@github.com`.
-Verify a new host fingerprint against [GitHub's published fingerprints](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints).
-GitHub returns exit code 1 even after successful authentication because it offers no shell.
+Load it into macOS's existing agent, then sign in and upload the **public** key
+when prompted:
 
-SSH signing is a separate opt-in. Register a signing key with your Git host, then
-set `gpg.format=ssh` and `user.signingKey` to its `.pub` path in your local Git config.
-Keep the private key loaded in your agent. For local verification, set
-`gpg.ssh.allowedSignersFile` to a file containing your real email and public key:
-`EMAIL namespaces="git" ssh-ed25519 PUBLIC_KEY`. Test a signed commit with
-`git log -1 --show-signature` in a scratch repository before enabling
-`commit.gpgSign=true`. [Signing setup](https://docs.github.com/en/authentication/managing-commit-signature-verification/telling-git-about-your-signing-key).
+```sh
+/usr/bin/ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+gh auth login --hostname github.com --git-protocol ssh --web
+gh auth status
+ssh -T git@github.com
+```
 
-## Projects and CLI tips
+Verify new host fingerprints against [GitHub's list](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints).
+Success says you authenticated; exit code 1 is normal because GitHub offers no
+shell. `UseKeychain` is macOS-only. [GitHub authentication](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git).
 
-### Runtimes, tasks and agents
+Existing clones keep their remote protocol. For this repository, switch to SSH
+only if you chose that route:
 
-Pin only the runtimes a project uses, e.g. `mise use --pin node@lts` in that project.
-Review and commit its `mise.toml`. The shared config enables mise's paranoid mode:
-inspect project tasks/configs before `mise trust ./mise.toml`, then `mise install`.
+```sh
+git remote -v
+git remote set-url origin git@github.com:venglov/macOS-dev-setup.git
+```
+
+Shared Git defaults use fast-forward-only pulls, `zdiff3` conflicts and Delta as
+the pager. Identity stays local; ignore rules cover only macOS litter.
+[Optional SSH commit signing](docs/cheatsheet.md#ssh-commit-signing).
+
+## 6. Start a project and verify the setup
+
+Use mise for project runtimes and uv for Python dependencies. The
+[project recipes](docs/cheatsheet.md#first-projects) cover Python, Node and Go,
+including a small Python config that makes uv use mise's interpreter.
+
+Review project configs before `mise trust ./mise.toml`, then run `mise install`.
+Paranoid mode requires renewed trust after config changes.
 [Trust behavior](https://mise.jdx.dev/paranoid.html).
-
-```sh
-mise exec -- node --version  # Project runtime, no interactive shell needed
-mise run test               # Run a task defined by the project
-```
-
-Agents and CI need mise on PATH and the project's working directory; they must
-not depend on `.zshrc`. On Apple Silicon, `/opt/homebrew/bin/mise exec -- …` is an
-explicit entry point. Use the installed path on other systems.
-
-For Python, select Python with mise and dependencies with uv. Add pre-commit and
-Ruff to the project's dev dependencies with `uv add --dev pre-commit ruff`, then
-commit `pyproject.toml` and `uv.lock`. Use `uv run`, not a separate global tool install:
-
-```sh
-mise exec -- uv sync --locked --no-python-downloads
-mise exec -- uv run --locked pre-commit install       # After reviewing the hooks
-mise exec -- uv run --locked ruff format --check .    # CI: check without rewriting
-mise exec -- uv run --locked ruff format .            # Local: explicitly reformat
-```
-
 Keep tokens, private keys, `.env` secrets and history databases out of Git and
-chezmoi. Use Keychain or a secret manager; history filters and gitignore are not
-security boundaries. [uv project workflow](https://docs.astral.sh/uv/concepts/projects/sync/).
+chezmoi; use Keychain or a secret manager.
 
-### Everyday commands
+Check once in a fresh Ghostty tab. Run Brewfile commands from this repository:
 
-```sh
-rg -n 'TODO|FIXME' src                  # Search project contents
-fd --type f --extension go             # Find files, respecting ignore rules
-fd --type f --print0 | fzf --read0 --print0  # NUL-delimited selection for scripts
-z project                             # Jump to a visited directory
-zi                                    # Choose a visited directory with fzf
-atuin search 'git rebase'              # Search local command history
-jq '.scripts' package.json            # Inspect JSON
-git diff                              # Delta renders the diff
-git log --oneline --graph -20
-```
+- [ ] `brew bundle check --no-upgrade --file=Brewfile` succeeds; `chezmoi verify` reports no differences.
+- [ ] The shell opens without errors; Ctrl-R, Ctrl-T, left Option-C and Tab behave as above.
+- [ ] `git config --show-origin --get user.email` shows your email; `gh auth status` succeeds.
+- [ ] Your chosen project recipe runs; its runtime matches `mise.toml`. For Python, check the interpreter as shown in the recipe.
+- [ ] If installed, VS Code uses the project's runtime and OrbStack passes the Docker checks above.
+- [ ] If enabled, `sudo -k` followed by `sudo -v` offers Touch ID when available.
 
-Quote paths. Avoid splitting filenames with `awk -F:` or whitespace-based `xargs`;
-for arbitrary filenames, keep NUL delimiters throughout a pipeline. In Ghostty,
-Ctrl-T inserts selected paths into the command line; `z` never replaces `cd`.
+## Updates and dotfile changes
 
-More installed tools: `bat README.md`, `eza -la`, `btop`, `dust .`,
-`hyperfine 'your-command'`, or `watchexec -e go -- go test ./...`.
-For long sessions use `tmux new -s work`, detach with Ctrl-B then D, and return
-with `tmux attach -t work`.
-
-## Updates and checks
+Run from this repository:
 
 ```sh
 brew update
-brew upgrade --formula                    # All installed CLI, no GUI
-brew upgrade --cask --greedy ghostty        # Only the named GUI app; close it first
+brew upgrade --formula                    # Installed CLI tools
+brew upgrade --cask --greedy ghostty       # Close the named app first
 brew bundle check --no-upgrade --file=Brewfile
-zimfw update                              # Downloaded Zim modules; in interactive zsh
+# If you installed the complete optional set:
+# brew bundle check --no-upgrade --file=Brewfile.optional
+zimfw update                              # Downloaded modules; in interactive zsh
 chezmoi diff
 chezmoi verify
 ```
 
-App updaters may also update their own bundles; do not disable security updates.
-Review repository changes before applying dotfiles again. Brewfile records the tool
-set, not exact binary versions; pin project dependencies separately. No automatic
-cleanup, service startup or OS preference changes are part of this setup.
+Review source changes, then repeat `chezmoi diff` → `chezmoi apply` → `chezmoi verify`.
+To undo a source change, revert it in Git and apply again; to recover pre-setup
+files, restore your backup. Disabling zsh in `chezmoi edit-config` stops managing
+its files without removing them. [Chezmoi workflow](https://www.chezmoi.io/user-guide/command-overview/).
 
-CI renders and reapplies dotfiles in a temporary home on macOS and Linux. It checks
-Git identity persistence, zsh syntax and login Homebrew initialization on macOS.
-It does not install Zim modules or exercise GUI/Keychain integration.
-
-## Later platforms
-
-Steam Deck needs a SteamOS-specific plan: verify writable paths and persistence
-across updates before system package changes; [Valve warns about packages outside Flatpak](https://help.steampowered.com/en/faqs/view/671A-4453-E8D2-323C).
-A Proxmox hypervisor should get only necessary administration tools, not a desktop
-stack. Ubuntu VM and LXC guests need separate provisioning and privilege checks.
-No installers for these platforms are included, and user dotfiles are never meant
-for automatic application to root.
+Brewfiles record the tool set, not exact binary versions. Pin project dependencies
+separately and keep app security updates enabled. CI checks dotfile rendering,
+repeat application, Git identity and zsh syntax on macOS/Linux; GUI, Keychain and
+interactive integrations use the manual checklist above.

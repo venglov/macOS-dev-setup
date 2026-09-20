@@ -1,8 +1,5 @@
 # compinit and CLI integrations run in .zshrc before Zim's generated init.
-zmodule zimfw/archive
-zmodule zimfw/git
 zmodule zimfw/input
-zmodule zimfw/termtitle
 zmodule Aloxaf/fzf-tab --if-command fzf
 
 # Homebrew owns these plugins on macOS; Zim installs them on other systems.
