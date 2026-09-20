@@ -25,7 +25,7 @@ Review these settings manually; choose the comfort settings to suit you.
 | General → Sharing; Login Items & Extensions | Enable only services and startup apps you use |
 | Keyboard | Choose layouts, language-switch shortcut and key-repeat speed; avoid hotkey conflicts |
 | Trackpad; Desktop & Dock | Set gestures, scrolling and Dock behavior to taste |
-| Finder → Settings → Advanced; View menu | Show filename extensions and the path bar |
+| Finder → View menu | Show the path bar |
 
 [FileVault reference](https://support.apple.com/guide/mac-help/protect-data-on-your-mac-with-filevault-mh11785/mac).
 
@@ -35,7 +35,7 @@ On macOS 14+ with Touch ID configured, use Apple's local PAM file:
 
 ```sh
 sudo cp -n /etc/pam.d/sudo_local.template /etc/pam.d/sudo_local
-sudoedit /etc/pam.d/sudo_local
+sudo -e /etc/pam.d/sudo_local
 ```
 
 `cp -n` preserves an existing file. Uncomment this line (or add it once if absent):
@@ -96,6 +96,7 @@ Install the terminal, then choose any other apps you need:
 
 ```sh
 brew install --cask ghostty
+brew install --cask homebrew-app
 # Example: brew install --cask visual-studio-code orbstack
 ```
 
@@ -104,7 +105,6 @@ brew install --cask ghostty
 | `ghostty` | Main terminal; configured in the next step |
 | `visual-studio-code` | Enable the `code` command; see [IDE setup](docs/cheatsheet.md#vs-code-and-project-runtimes) |
 | `orbstack` | Review licensing, launch once and enable Docker integration |
-| `raycast` | Choose a hotkey and grant the permissions its features need |
 | `obsidian` | Choose a vault and sync policy |
 
 OrbStack supplies Docker tooling. After launching it, check `docker context show`,
@@ -136,13 +136,34 @@ chezmoi verify
 zsh -lic 'zimfw install'    # If you chose to manage zsh; needs network access
 ```
 
+If zsh reports `compinit: insecure directories`, run:
+
+```sh
+autoload -Uz compaudit
+compaudit
+```
+
+This lists completion directories or files with unsafe ownership or permissions.
+If it lists `/opt/homebrew/share` and `ls -ld /opt/homebrew/share` shows that you
+own it and its group can write to it (`drwxrwxr-x`), fix that directory:
+
+```sh
+chmod g-w /opt/homebrew/share
+compaudit
+```
+
+On Intel, use `/usr/local/share` if that is the reported path. For other entries,
+inspect their ownership and permissions before changing them. Once `compaudit`
+prints no paths, open a new terminal tab and retry `zimfw install` if it was
+interrupted. Keep `compinit`'s security check enabled.
+
 Open a new Ghostty tab. The setup uses system zsh, standard `~/.config` paths and
 `ZDOTDIR=$HOME`. `.zshenv` sets EDITOR/PAGER defaults, `.zprofile` handles login PATH,
 and `.zshrc` loads interactive integrations.
 
 | Action | Behavior |
 | --- | --- |
-| Ctrl-R | Atuin history; Enter inserts a selection for review, another Enter runs it |
+| Ctrl-R / Up arrow | Atuin history; Enter inserts a selection for review, another Enter runs it |
 | Ctrl-T / left Option-C | fzf file / directory selection |
 | Tab | fzf-tab completion |
 | Right arrow at end of line | Accept an autosuggestion |
@@ -229,8 +250,6 @@ Use mise for project runtimes and uv for Python dependencies. The
 including a small Python config that makes uv use mise's interpreter.
 
 Review project configs before `mise trust ./mise.toml`, then run `mise install`.
-Paranoid mode requires renewed trust after config changes.
-[Trust behavior](https://mise.jdx.dev/paranoid.html).
 Keep tokens, private keys, `.env` secrets and history databases out of Git and
 chezmoi; use Keychain or a secret manager.
 

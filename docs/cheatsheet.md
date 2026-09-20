@@ -19,7 +19,7 @@ use different flags from standard utilities; choose the tool explicitly in scrip
 | `grep -R` | `rg` (ripgrep) | `rg -n 'TODO\|FIXME' src` | Recursive search; respects ignore files and skips hidden files by default |
 | `find` | `fd` | `fd --type f --extension go . src` | Searches names; respects ignore files and skips hidden files by default |
 | Repeated `cd` to familiar directories | `z`, `zi` (zoxide) | `z project`; `zi project` | Selects from visited directories; `zi` opens fzf; regular `cd` uses an exact path |
-| `history`, Ctrl-R search | `atuin` | Ctrl-R; `atuin search 'git rebase'` | Searches a local database; Enter returns the selected command for review without executing it |
+| `history`, Ctrl-R search | `atuin` | Ctrl-R / Up arrow; `atuin search 'git rebase'` | Searches a local database; Enter returns the selected command for review without executing it |
 | Manual selection from a list | `fzf` | `fd --type f \| fzf` | Interactive fuzzy filter; Ctrl-T inserts selected paths into the shell command line |
 | `top` | `btop` | `btop` | Interactive CPU, memory, network and process monitoring; press `q` to quit |
 | `ps` | `procs` (optional) | `procs`; `procs node`; `procs --watch 2` | Process table, name filtering and updates every two seconds |
@@ -55,7 +55,7 @@ throughout pipelines that process lists of filenames.
 
 | Action | Shortcut / command |
 | --- | --- |
-| Atuin history | Ctrl-R; Enter inserts the command, then another Enter executes it |
+| Atuin history | Ctrl-R / Up arrow; Enter inserts the command, then another Enter executes it |
 | fzf file selection | Ctrl-T |
 | fzf directory selection | Left Option-C in Ghostty (Alt-C) |
 | fzf-tab completion selection | Tab after a command or partial path |
@@ -70,6 +70,14 @@ Use full Git commands; Ghostty's shell integration handles terminal titles.
 [Zim documentation](https://zimfw.sh/docs/commands/).
 
 ## Ghostty and SSH
+
+The managed config follows macOS light/dark appearance with GitHub Light Default
+and GitHub Dark Default. It uses 94% background opacity, blur, a 14-point font,
+balanced padding and a steady bar cursor; the mouse pointer hides while typing.
+Edit `dotfiles/dot_config/ghostty/config` in the checkout, then run `chezmoi diff`
+and `chezmoi apply`. After changing transparency, fully quit and reopen Ghostty
+on macOS; finish any running terminal jobs first.
+[Appearance options](https://ghostty.org/docs/config/reference#background-opacity).
 
 | Action | Default macOS shortcut |
 | --- | --- |
