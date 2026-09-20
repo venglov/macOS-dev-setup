@@ -45,7 +45,7 @@ zimfw() {
             return $?
         fi
     done
-    print -u2 'Install zimfw first; see README.md (Zim setup).'
+    print -u2 'Install zimfw first; see README.md (step 4).'
     return 127
 }
 if [[ -r "$ZIM_HOME/init.zsh" ]]; then

@@ -1,0 +1,30 @@
+# Optional additions to Brewfile. Install individual tools or this whole file.
+
+# Terminal workspaces and interfaces.
+brew "tmux" # Run persistent terminal sessions with multiple windows and panes.
+brew "neovim" # Edit text and source code in the terminal; provides nvim.
+brew "lazygit" # Interactive terminal interface for Git.
+
+# HTTP, databases and encrypted files.
+brew "httpie" # Send HTTP requests with readable output; provides http and https.
+brew "wget" # Download files over HTTP, HTTPS and FTP.
+brew "openssl@3" # TLS and cryptographic tools, including certificate and digest commands.
+brew "sqlite" # Embedded SQL database engine and sqlite3 command-line shell.
+brew "sqlc" # Generate type-safe database access code from SQL queries.
+brew "age" # Encrypt and decrypt files using recipient keys or passphrases.
+brew "sops" # Edit encrypted configuration files using configured keys or key services.
+
+# Additional system views.
+brew "duf" # Show filesystem capacity and available disk space.
+brew "procs" # List and filter processes with readable, colored output.
+brew "watch" # Repeat a command at regular intervals and display its output.
+
+# Build tools and project automation.
+brew "cmake" # Configure projects and generate build files.
+brew "ninja" # Run incremental builds from generated build files.
+brew "pkgconf" # Look up library compiler and linker flags; provides pkg-config.
+brew "make" # Run build rules and dependency-based tasks; GNU Make is gmake on macOS.
+brew "tokei" # Count source lines, comments and blank lines by language.
+brew "hyperfine" # Benchmark commands with repeated runs and statistical results.
+brew "watchexec" # Run commands again when watched files change.
+brew "just" # Run named project commands defined in a justfile.

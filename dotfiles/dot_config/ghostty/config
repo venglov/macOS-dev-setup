@@ -1,4 +1,7 @@
-# Native font and key bindings; Ctrl-R passes through to the shell.
+# Native font; Ctrl-R passes through to the shell.
 font-size = 13
 window-padding-x = 8
 window-padding-y = 8
+
+# Left Option handles shell shortcuts; right Option keeps macOS character input.
+macos-option-as-alt = left
