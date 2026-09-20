@@ -1,0 +1,3 @@
+# Operating-system litter only. Build outputs belong in each project's ignore.
+.DS_Store
+._*
