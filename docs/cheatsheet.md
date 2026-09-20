@@ -1,102 +1,102 @@
-# Читшит CLI
+# CLI cheatsheet
 
-Все перечисленные здесь CLI-программы входят в `Brewfile`. Установка:
+All CLI programs listed here are included in `Brewfile`. Install them with:
 `brew bundle install --no-upgrade --file=Brewfile`.
-Для интеграций shell примените dotfiles и выполните `zsh -lic 'zimfw install'`.
+For shell integrations, apply the dotfiles and run `zsh -lic 'zimfw install'`.
 
-## Альтернативы привычным командам
+## Alternatives to familiar commands
 
-Это команды для самостоятельного вызова: `ls`, `cat`, `grep`, `find`, `cd`,
-`ps`, `top`, `du` и `df` не переопределяются aliases. Флаги альтернатив могут
-отличаться от стандартных утилит; в скриптах выбирайте инструмент явно.
+Run these alternatives explicitly: `ls`, `cat`, `grep`, `find`, `cd`,
+`ps`, `top`, `du` and `df` are not overridden by aliases. Alternative tools may
+use different flags from standard utilities; choose the tool explicitly in scripts.
 
-| Привычная команда / задача | Установленная альтернатива | Как использовать | Отличие |
+| Familiar command / task | Installed alternative | Usage | Difference |
 | --- | --- | --- | --- |
-| `ls` | `eza` | `eza -la --git --group-directories-first` | Подробный список с Git-статусом; `eza -T -L 2` показывает дерево |
-| `cat`, просмотр исходника | `bat` | `bat README.md`; `bat --paging=never file.py` | Подсветка и номера строк; для побайтового объединения файлов используйте `cat` |
-| `less`, постраничное чтение | `bat` или `less` | `bat file.py`; `less -R +G app.log` | `bat` удобен для кода; `less` остаётся pager для больших логов, `F` следит за дописыванием |
-| `grep -R` | `rg` (ripgrep) | `rg -n 'TODO\|FIXME' src` | Рекурсивный поиск; по умолчанию учитывает ignore-файлы и пропускает скрытые файлы |
-| `find` | `fd` | `fd --type f --extension go . src` | Поиск имён; учитывает ignore-файлы, по умолчанию пропускает скрытые файлы |
-| Повторный `cd` в знакомые каталоги | `z`, `zi` (zoxide) | `z project`; `zi project` | Выбор из посещённых каталогов; `zi` открывает fzf; обычный `cd` работает по точному пути |
-| `history`, поиск по Ctrl-R | `atuin` | Ctrl-R; `atuin search 'git rebase'` | Поиск по локальной базе; Enter возвращает выбранную команду для проверки, без запуска |
-| Ручной выбор из списка | `fzf` | `fd --type f \| fzf` | Нечёткий интерактивный фильтр; Ctrl-T вставляет выбранные пути в строку shell |
-| `top` | `btop` | `btop` | Интерактивные графики CPU, памяти, сети и процессов; выход — `q` |
-| `ps` | `procs` | `procs`; `procs node`; `procs --watch 2` | Таблица процессов, фильтр по имени и обновление каждые две секунды |
-| `du` | `dust` | `dust .`; `dust -d 2 .` | Наглядное распределение занятого места, ограничение глубины |
-| `df` | `duf` | `duf`; `duf /` | Таблица файловых систем, ёмкости и свободного места |
-| Просмотр Git diff | `delta` | `git diff`; `git show HEAD` | Уже подключён как Git pager; для вывода без pager — `git --no-pager diff` |
-| `curl` для HTTP API | `http` (HTTPie) | `http GET https://httpbin.org/get`; `http POST https://httpbin.org/post hello=world` | Читаемый вывод и простой JSON-ввод; второй пример отправляет тестовые данные |
-| `curl -o`, скачивание файлов | `wget` | `wget -O artifact.tgz https://example.com/artifact.tgz` | Явное сохранение в файл; замените URL адресом своего артефакта |
-| `vi` / `vim` | `nvim` (Neovim) | `nvim README.md` | Отдельный редактор; EDITOR автоматически на него не переключается |
-| `time` для сравнения команд | `hyperfine` | `hyperfine --warmup 2 'rg TODO src' 'grep -R TODO src'` | Несколько запусков со статистикой; команды в примере имеют разные правила ignore |
-| Цикл повторного запуска | `watch`, `watchexec` | `watch -n 2 df -h`; `watchexec -e go -- go test ./...` | Первый запускает по таймеру, второй — при изменении файлов |
+| `ls` | `eza` | `eza -la --git --group-directories-first` | Detailed listing with Git status; `eza -T -L 2` shows a tree |
+| `cat`, viewing source files | `bat` | `bat README.md`; `bat --paging=never file.py` | Syntax highlighting and line numbers; use `cat` for byte-for-byte file concatenation |
+| `less`, paged reading | `bat` or `less` | `bat file.py`; `less -R +G app.log` | `bat` is convenient for code; `less` handles large logs, and `F` follows appended output |
+| `grep -R` | `rg` (ripgrep) | `rg -n 'TODO\|FIXME' src` | Recursive search; respects ignore files and skips hidden files by default |
+| `find` | `fd` | `fd --type f --extension go . src` | Searches names; respects ignore files and skips hidden files by default |
+| Repeated `cd` to familiar directories | `z`, `zi` (zoxide) | `z project`; `zi project` | Selects from visited directories; `zi` opens fzf; regular `cd` uses an exact path |
+| `history`, Ctrl-R search | `atuin` | Ctrl-R; `atuin search 'git rebase'` | Searches a local database; Enter returns the selected command for review without executing it |
+| Manual selection from a list | `fzf` | `fd --type f \| fzf` | Interactive fuzzy filter; Ctrl-T inserts selected paths into the shell command line |
+| `top` | `btop` | `btop` | Interactive CPU, memory, network and process monitoring; press `q` to quit |
+| `ps` | `procs` | `procs`; `procs node`; `procs --watch 2` | Process table, name filtering and updates every two seconds |
+| `du` | `dust` | `dust .`; `dust -d 2 .` | Visual disk usage breakdown with a depth limit |
+| `df` | `duf` | `duf`; `duf /` | Table of filesystems, capacity and available space |
+| Viewing Git diffs | `delta` | `git diff`; `git show HEAD` | Already configured as the Git pager; use `git --no-pager diff` to bypass it |
+| `curl` for HTTP APIs | `http` (HTTPie) | `http GET https://httpbin.org/get`; `http POST https://httpbin.org/post hello=world` | Readable output and simple JSON input; the second example sends test data |
+| `curl -o`, downloading files | `wget` | `wget -O artifact.tgz https://example.com/artifact.tgz` | Saves to an explicit filename; replace the URL with your artifact URL |
+| `vi` / `vim` | `nvim` (Neovim) | `nvim README.md` | Separate editor; EDITOR is not automatically changed to use it |
+| `time` for command comparisons | `hyperfine` | `hyperfine --warmup 2 'rg TODO src' 'grep -R TODO src'` | Repeated runs with statistics; the example commands use different ignore rules |
+| Repeated command execution | `watch`, `watchexec` | `watch -n 2 df -h`; `watchexec -e go -- go test ./...` | The first runs on a timer; the second runs when files change |
 
-Источники и дополнительные флаги: [eza](https://github.com/eza-community/eza),
+Documentation and additional flags: [eza](https://github.com/eza-community/eza),
 [bat](https://github.com/sharkdp/bat), [ripgrep](https://github.com/BurntSushi/ripgrep),
 [fd](https://github.com/sharkdp/fd), [zoxide](https://github.com/ajeetdsouza/zoxide),
 [procs](https://github.com/dalance/procs), [dust](https://github.com/bootandy/dust),
 [duf](https://github.com/muesli/duf).
 
-## Поиск, скрытые файлы и имена с пробелами
+## Search, hidden files and paths with spaces
 
 ```sh
 rg -n --hidden --glob '!.git' 'TODO|FIXME' .
 fd --hidden --exclude .git --type f --extension toml
-fd --type f --print0 | fzf --read0 --print0   # NUL-разделители для обработки путей
+fd --type f --print0 | fzf --read0 --print0   # NUL delimiters for path handling
 ```
 
-`--hidden` включает скрытые файлы, но сохраняет правила ignore. Для осознанного
-поиска в игнорируемых каталогах добавьте `--no-ignore`. `--follow` добавляйте,
-только если хотите обходить симлинки. Заключайте пути в кавычки, а при обработке
-списков файлов сохраняйте NUL-разделители до конца цепочки.
+`--hidden` includes hidden files while preserving ignore rules. Add `--no-ignore`
+when you explicitly want to search ignored directories. Add `--follow` only when
+you want to traverse symbolic links. Quote paths and preserve NUL delimiters
+throughout pipelines that process lists of filenames.
 
-## Клавиши и Zimfw
+## Keyboard shortcuts and Zimfw
 
-| Действие | Клавиша / команда |
+| Action | Shortcut / command |
 | --- | --- |
-| История Atuin | Ctrl-R; Enter вставляет команду, следующий Enter выполняет её |
-| Выбор файлов fzf | Ctrl-T |
-| Выбор каталога fzf | Alt-C; в терминале может потребоваться настройка Option как Alt |
-| Дополнение с выбором fzf-tab | Tab после команды или части пути |
-| Принять подсказку autosuggestions | Стрелка вправо в конце строки |
-| Отредактировать командную строку в EDITOR | Ctrl-X, затем Ctrl-E (модуль Zim input) |
-| Установить новые модули после изменения `.zimrc` | `zimfw install`, затем открыть новую вкладку |
-| Обновить загруженные модули | `zimfw update` |
-| Посмотреть модули | `zimfw list` |
-| Распаковать архив | `unarchive archive.tar.gz` (модуль Zim archive) |
+| Atuin history | Ctrl-R; Enter inserts the command, then another Enter executes it |
+| fzf file selection | Ctrl-T |
+| fzf directory selection | Alt-C; your terminal may need Option configured as Alt |
+| fzf-tab completion selection | Tab after a command or partial path |
+| Accept an autosuggestion | Right arrow at the end of the line |
+| Edit the command line in EDITOR | Ctrl-X, then Ctrl-E (Zim input module) |
+| Install new modules after editing `.zimrc` | `zimfw install`, then open a new terminal tab |
+| Update downloaded modules | `zimfw update` |
+| List modules | `zimfw list` |
+| Extract an archive | `unarchive archive.tar.gz` (Zim archive module) |
 
-Zim Git использует префикс **`G` в верхнем регистре**: `Gws` — короткий статус,
-`Gwd` — diff, `Gia` — добавление файлов, `Gc` — commit, `Glg` — граф истории.
-Например: `Gia README.md`. Старые `gst`, `ga`, `gc`, `ll`, `lt`, `please`
-не определены. Проверить реальное раскрытие можно командой `alias Gws`.
-Модуль archive также добавляет aliases для расширений архивов и при наличии
-pigz/pbzip2 использует их вместо gzip/bzip2.
-[Справка Zim](https://zimfw.sh/docs/commands/), [Git aliases](https://github.com/zimfw/git).
+Zim Git uses an **uppercase `G` prefix**: `Gws` shows short status,
+`Gwd` shows a diff, `Gia` stages files, `Gc` commits, and `Glg` shows the history graph.
+For example: `Gia README.md`. The old `gst`, `ga`, `gc`, `ll`, `lt` and `please`
+aliases are not defined. Inspect an alias with `alias Gws`.
+The archive module also adds archive suffix aliases and uses pigz/pbzip2
+instead of gzip/bzip2 when available.
+[Zim documentation](https://zimfw.sh/docs/commands/), [Git aliases](https://github.com/zimfw/git).
 
-## Остальные инструменты из Brewfile
+## Other tools from Brewfile
 
-| Задача | Пример |
+| Task | Example |
 | --- | --- |
 | JSON | `jq '.scripts' package.json` |
 | YAML | `yq '.services' compose.yaml` |
 | GitHub CLI | `gh auth login`; `gh pr list`; `gh pr diff 1` |
-| Git UI | `lazygit` в репозитории |
-| Счётчик исходного кода | `tokei .` |
-| Отдельная терминальная сессия | `tmux new -s work`; отсоединиться Ctrl-B, D; вернуться `tmux attach -t work` |
-| Версии языка в проекте | `mise use --pin node@lts`; `mise exec -- node --version` |
-| Python-зависимости | `uv add --dev ruff pre-commit`; `mise exec -- uv sync --locked --no-python-downloads` |
-| Форматирование Python | `mise exec -- uv run --locked ruff format --check .` |
-| Задачи проекта | `mise run test`; `just --list`; `just test` — если соответствующая задача определена |
-| Сборка C/C++ | `cmake -S . -B build -G Ninja`; `cmake --build build` |
-| GNU Make на macOS | `gmake` — имя программы из формулы `make` |
-| Флаги библиотеки для компилятора | `pkg-config --cflags --libs sqlite3` — если её metadata доступна |
-| SQLite от Homebrew | `"$(brew --prefix sqlite)/bin/sqlite3" app.db '.tables'` |
-| Go-код из SQL | `sqlc generate` в проекте с `sqlc.yaml` |
-| SHA-256 через OpenSSL 3 | `"$(brew --prefix openssl@3)/bin/openssl" dgst -sha256 artifact.tgz` |
-| Шифрование файла | `age -r AGE_PUBLIC_RECIPIENT -o file.age file.txt` — подставьте публичного получателя |
-| Редактирование зашифрованного YAML | `sops secrets.yaml` — после настройки получателей и ключей проекта |
-| Сравнить dotfiles перед применением | `chezmoi diff`; `chezmoi apply`; `chezmoi verify` |
+| Git UI | Run `lazygit` inside a repository |
+| Source code statistics | `tokei .` |
+| Persistent terminal session | `tmux new -s work`; detach with Ctrl-B, D; reattach with `tmux attach -t work` |
+| Project runtime versions | `mise use --pin node@lts`; `mise exec -- node --version` |
+| Python dependencies | `uv add --dev ruff pre-commit`; `mise exec -- uv sync --locked --no-python-downloads` |
+| Python formatting | `mise exec -- uv run --locked ruff format --check .` |
+| Project tasks | `mise run test`; `just --list`; `just test` — when the corresponding task is defined |
+| C/C++ builds | `cmake -S . -B build -G Ninja`; `cmake --build build` |
+| GNU Make on macOS | `gmake` is the executable provided by the `make` formula |
+| Compiler and linker flags for a library | `pkg-config --cflags --libs sqlite3` — when its metadata is available |
+| Homebrew SQLite | `"$(brew --prefix sqlite)/bin/sqlite3" app.db '.tables'` |
+| Go code from SQL | Run `sqlc generate` in a project with `sqlc.yaml` |
+| SHA-256 with OpenSSL 3 | `"$(brew --prefix openssl@3)/bin/openssl" dgst -sha256 artifact.tgz` |
+| File encryption | `age -r AGE_PUBLIC_RECIPIENT -o file.age file.txt` — substitute the recipient's public key |
+| Editing encrypted YAML | `sops secrets.yaml` — after configuring the project's recipients and keys |
+| Compare dotfiles before applying | `chezmoi diff`; `chezmoi apply`; `chezmoi verify` |
 
-`sqlite` и `openssl@3` могут быть keg-only: путь через `brew --prefix FORMULA`
-выбирает именно установленную Homebrew-версию. Системные бинарники остаются доступны.
-Ключи age/SOPS и базы истории не добавляйте в репозиторий dotfiles.
+`sqlite` and `openssl@3` may be keg-only: using `brew --prefix FORMULA` in the path
+selects the Homebrew version explicitly. System binaries remain available.
+Keep age/SOPS keys and history databases out of the dotfiles repository.
