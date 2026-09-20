@@ -1,0 +1,18 @@
+# compinit and CLI integrations run in .zshrc before Zim's generated init.
+zmodule zimfw/archive
+zmodule zimfw/git
+zmodule zimfw/input
+zmodule zimfw/termtitle
+zmodule Aloxaf/fzf-tab --if-command fzf
+
+# Homebrew owns these plugins on macOS; Zim installs them on other systems.
+if [[ -n "$HOMEBREW_PREFIX" && -r "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+    zmodule "$HOMEBREW_PREFIX/share/zsh-autosuggestions" --source zsh-autosuggestions.zsh
+else
+    zmodule zsh-users/zsh-autosuggestions
+fi
+if [[ -n "$HOMEBREW_PREFIX" && -r "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
+    zmodule "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting" --source zsh-syntax-highlighting.zsh
+else
+    zmodule zsh-users/zsh-syntax-highlighting
+fi

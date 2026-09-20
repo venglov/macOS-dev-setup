@@ -1,0 +1,24 @@
+# Shared user defaults. ~/.gitconfig takes precedence; identity stays local.
+[init]
+    defaultBranch = main
+[fetch]
+    prune = true
+[pull]
+    ff = only
+[merge]
+    conflictStyle = zdiff3
+[user]
+    useConfigOnly = true
+[core]
+    excludesFile = ~/.config/git/ignore
+    pager = delta
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true
+{{ if eq .chezmoi.os "darwin" }}
+[credential]
+    helper = osxkeychain
+{{ end }}
+[include]
+    path = ~/.config/git/local
