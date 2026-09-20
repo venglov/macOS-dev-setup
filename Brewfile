@@ -1,0 +1,12 @@
+# macOS CLI base. GUI apps and optional tools are listed in README.md.
+brew "git"
+brew "chezmoi"
+brew "mise"
+brew "starship"
+brew "atuin"
+brew "fzf"
+brew "fd"
+brew "ripgrep"
+brew "zoxide"
+brew "git-delta"
+brew "jq"

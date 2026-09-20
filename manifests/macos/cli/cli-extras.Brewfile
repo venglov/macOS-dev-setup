@@ -1,5 +1,0 @@
-brew "jq"
-brew "yq"
-brew "bat"
-brew "eza"
-brew "gh"

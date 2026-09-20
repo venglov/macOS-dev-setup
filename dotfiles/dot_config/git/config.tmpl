@@ -11,13 +11,14 @@
     useConfigOnly = true
 [core]
     excludesFile = ~/.config/git/ignore
-{{ if .terminal }}
-[include]
-    path = ~/.config/git/delta
-{{ end }}
+    pager = delta
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true
 {{ if eq .chezmoi.os "darwin" }}
-[include]
-    path = ~/.config/git/macos
+[credential]
+    helper = osxkeychain
 {{ end }}
 [include]
     path = ~/.config/git/local

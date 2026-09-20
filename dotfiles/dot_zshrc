@@ -1,0 +1,38 @@
+# Interactive settings only. Standard commands keep their normal behavior.
+[[ -o interactive ]] || return
+typeset -U fpath
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=10000
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY
+setopt INC_APPEND_HISTORY INTERACTIVE_COMMENTS
+bindkey -e
+
+if [[ -n "$HOMEBREW_PREFIX" ]]; then
+    fpath=("$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath)
+fi
+autoload -Uz compinit
+compinit
+
+(( $+commands[mise] )) && eval "$(mise activate zsh)"
+if (( $+commands[fzf] )); then
+    # Disable fzf's history binding before initialization: Ctrl-R is Atuin's.
+    export FZF_CTRL_R_COMMAND=''
+    if (( $+commands[fd] )); then
+        export FZF_CTRL_T_COMMAND='fd --type f --hidden --exclude .git'
+        export FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+    fi
+    source <(fzf --zsh)
+fi
+(( $+commands[zoxide] )) && eval "$(zoxide init zsh --cmd z)"
+(( $+commands[atuin] )) && eval "$(atuin init zsh --disable-up-arrow)"
+(( $+commands[starship] )) && eval "$(starship init zsh)"
+
+# Optional Homebrew plugins; syntax highlighting stays last.
+if [[ -n "$HOMEBREW_PREFIX" ]]; then
+    for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+        [[ -r "$HOMEBREW_PREFIX/share/$plugin/$plugin.zsh" ]] &&
+            source "$HOMEBREW_PREFIX/share/$plugin/$plugin.zsh"
+    done
+    unset plugin
+fi

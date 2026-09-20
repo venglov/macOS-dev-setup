@@ -1,7 +1,12 @@
-# Login environment. Agents should receive an explicit PATH; see docs/projects.md.
+# Login environment; scripts and agents use mise exec with an explicit PATH.
 typeset -U path PATH
 {{ if eq .chezmoi.os "darwin" }}
-{{ template "macos/zprofile.zsh" . }}
+export HOMEBREW_NO_ANALYTICS=1
+if [[ "$MACHTYPE" == arm64 && -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+elif [[ "$MACHTYPE" == x86_64 && -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv zsh)"
+fi
 {{ end }}
 path=("$HOME/.local/bin" $path)
 export PATH
