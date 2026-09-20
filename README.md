@@ -1,865 +1,308 @@
-# macOS Developer Setup (2025)
+# Unix setup
 
-Opinionated, repeatable bootstrap for a clean macOS machine. The quickstart below is meant for copy/paste on a fresh install.
+A CLI workstation: shared dotfiles, one macOS Brewfile, and the commands below.
+No custom installer, package profiles, automatic services, or login-shell changes.
 
----
+- `dotfiles/` — Git, zsh with Zimfw, mise, Starship and Atuin; Ghostty settings on macOS.
+- `Brewfile` — the macOS CLI tools, including the previously optional tools.
+- `.chezmoiroot` — tells chezmoi to manage only `dotfiles/` in this checkout.
+- [CLI cheatsheet](docs/cheatsheet.md) — alternatives to standard commands and examples.
 
-## Quickstart (copy/paste)
+## Shared Unix base
 
-Run the blocks in order. Commands that overwrite dotfiles (`~/.zprofile`, `~/.zshenv`, `~/.zshrc`, `~/.zimrc`, `~/.gitignore_global`) assume a clean setup—back up existing files if you care about them.
+| Purpose | Tools |
+| --- | --- |
+| Configuration and projects | Git, chezmoi, mise |
+| Shell, prompt and history | Zimfw, Starship, Atuin |
+| Search and navigation | fzf, fd, ripgrep, zoxide |
+| Diffs and structured data | Delta, jq |
 
-### Step 0 — Prerequisites
+**On a fresh Mac, do [macOS preparation](#macos-preparation) first.** On Linux,
+install these tools using your distribution's packages or their official releases,
+then clone this repository. Homebrew and systemd are not required by the dotfiles.
+Package names can differ: the shell expects `fd`, `rg` and `delta` on PATH.
 
-```bash
-xcode-select --install
-# Apple Silicon only: install Rosetta if you need x86 binaries
-sudo softwareupdate --install-rosetta --agree-to-license
+Use Git 2.35+, chezmoi 2.x, a current mise and fzf 0.48+. The optional shell config
+uses zsh 5.9; other shells can use the Git/mise configs without adopting zsh.
+This setup uses standard `~/.config` paths and `ZDOTDIR=$HOME`. Run as your own
+user, without sudo. Other BSD/Unix systems need tool compatibility checked first.
+
+### Apply dotfiles
+
+From your local checkout:
+
+```sh
+chezmoi init --source "$PWD"
+chezmoi diff
 ```
 
-### Step 1 — Homebrew (CLI only)
+Initialization saves this checkout as the source and asks whether to manage zsh.
+It does not apply dotfiles. If you already use chezmoi, merge these files into your
+existing source instead of replacing its configuration.
 
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-eval "$(/opt/homebrew/bin/brew shellenv)"
+Review the diff and back up the existing files it lists before continuing.
+Chezmoi is not a backup service; use your normal home backup or Time Machine.
+Keep local changes you need by editing the source before applying.
+
+```sh
+chezmoi apply
+chezmoi verify
 ```
 
-### Step 2 — Core CLI stack
+Repeat `diff` → `apply` after changes. An unchanged source can be reapplied safely.
+To undo a source change, revert it in Git, review the diff, and apply again.
+To recover your pre-setup files, restore your backup. Disabling zsh in
+`chezmoi edit-config` stops managing its files; it does not remove existing ones.
+[Chezmoi's workflow](https://www.chezmoi.io/user-guide/command-overview/).
 
-```bash
-brew update && brew upgrade
+### Shell behavior
 
-brew install \
-  zsh zsh-completions \
-  fzf ripgrep fd eza bat \
-  git gh jq yq git-delta \
-  zoxide atuin \
-  watch less \
-  btop duf dust procs \
-  openssl@3 age sops \
-  make cmake ninja pkg-config \
-  sqlite \
-  httpie wget \
-  tokei \
-  mise uv \
-  mas \
-  docker \
-  ollama \
-  sqlc
+`.zshenv` sets only EDITOR/PAGER defaults. `.zprofile` handles login PATH and
+Homebrew on macOS. `.zshrc` contains interactive integrations and completions.
+Use the system zsh on macOS with Zimfw. Starship supplies the prompt; no patched font is required.
+
+- **Ctrl-R:** Atuin history. Enter puts a selection on the command line for review.
+- **Ctrl-T / Alt-C:** fzf file / directory selection. Its Ctrl-R binding is disabled.
+- **`z project`:** jump with zoxide. `cd`, `ls`, `cat`, `grep`, etc. stay unchanged.
+- Atuin is local-only by default: no sync, update check or daemon. Import old history
+  with `atuin import auto` only if wanted; account creation and sync are separate.
+
+Zim's Git module supplies uppercase aliases such as `G`, `Gws` and `Gwd`.
+The old aliases replacing `ls`, `cat`, `grep`, `find`, etc. are not installed;
+use the alternatives by name as shown in the [cheatsheet](docs/cheatsheet.md).
+If your terminal's Option key produces
+characters instead of Alt-C, adjust its modifier settings or use `fd` and `fzf` directly.
+[Bindings: fzf](https://github.com/junegunn/fzf#setting-up-shell-integration),
+[Atuin](https://docs.atuin.sh/latest/configuration/key-binding/).
+
+### Zim setup
+
+The Brewfile installs Zimfw, zsh-completions, autosuggestions and syntax highlighting.
+After applying dotfiles, install the modules declared in `~/.zimrc`:
+
+```sh
+zsh -lic 'zimfw install'
 ```
 
-Install fzf key bindings and completions:
+Then open a new terminal tab. Zim provides archive helpers, Git aliases, input
+bindings, terminal titles and fzf-tab completion. It loads the Homebrew copies of
+autosuggestions and syntax highlighting on macOS. On Linux it downloads those
+two plugins alongside the other modules. See [Zim installation](https://zimfw.sh/docs/install/).
+If your Linux package manager does not provide Zim, install its manager first:
 
-```bash
-"$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc
+```sh
+mkdir -p "$HOME/.zim"
+curl --fail --location --output "$HOME/.zim/zimfw.zsh" \
+  https://github.com/zimfw/zimfw/releases/download/v1.20.1/zimfw.zsh
 ```
 
-Start installed services (optional):
+Module installation needs network access. Run `zimfw install` after editing the
+managed `.zimrc` and applying it; use `zimfw update` to update downloaded modules.
+Ordinary shell startup only loads the generated `~/.zim/init.zsh`; it does not
+download or update anything. Before the first install the base shell still works.
+Homebrew updates the manager and the two packaged plugins on macOS.
 
-```bash
-brew services start ollama          # Ollama API
-brew services start atuin           # Atuin history daemon
+## macOS preparation
+
+Use a native terminal on Apple Silicon. Homebrew uses `/opt/homebrew` there and
+`/usr/local` on Intel. This route targets macOS 14+; Intel is best effort under
+[Homebrew's current support policy](https://docs.brew.sh/Installation).
+Rosetta is only needed for an app that actually requires it.
+
+1. Run `xcode-select --install` and finish the Command Line Tools dialog.
+2. Install Homebrew using its [official instructions](https://docs.brew.sh/Installation).
+   Review the installer before running it. Keep its installation separate from dotfiles.
+3. Add Homebrew to the current terminal session:
+
+```sh
+eval "$(/opt/homebrew/bin/brew shellenv zsh)"  # Apple Silicon
+# Intel: use /usr/local/bin/brew instead.
 ```
 
-(Optional but recommended for Spaceship prompt glyphs)
+4. Get the repository and install the CLI tools:
 
-```bash
-brew install --cask font-meslo-lg-nerd-font
+```sh
+git clone https://github.com/venglov/macOS-dev-setup.git
+cd macOS-dev-setup
+brew bundle install --no-upgrade --file=Brewfile
+brew install --cask ghostty
 ```
 
-### Step 3 — Zsh with Zimfw
+Continue with [Apply dotfiles](#apply-dotfiles) and [Zim setup](#zim-setup), then open a new Ghostty tab.
+`--no-upgrade` avoids routine upgrades on reruns; Homebrew can still update a
+required dependency when installing a new package. [Bundle reference](https://docs.brew.sh/Brew-Bundle-and-Brewfile).
 
-#### 3.1 `~/.zprofile`
+### Included CLI tools and optional apps
 
-```bash
-cat > ~/.zprofile <<'EOF'
-# Homebrew (ARM)
-eval "$(/opt/homebrew/bin/brew shellenv)"
+All tools in this table are installed by the Brewfile. There are no extra profiles.
 
-# User tool paths (uv, Go, etc.)
-export PATH="$HOME/.local/bin:$HOME/go/bin:$PATH"
-EOF
+| Tool | When useful |
+| --- | --- |
+| `uv` | Python environments and project dependencies; Python itself stays in mise |
+| `bat`, `eza` | File previews and directory listings, called by their own names |
+| `tmux` | SSH and long sessions; start it explicitly |
+| `btop`, `duf`, `dust`, `procs`, `watch` | Processes, disk usage and repeated command output |
+| `cmake`, `ninja`, `pkgconf`, `make` | Projects needing more than Apple CLT; GNU Make is `gmake` |
+| `neovim`, `lazygit` | Terminal editor / Git UI |
+| `hyperfine`, `watchexec`, `just` | Benchmarking, file watching, or a project with a Justfile |
+| `zimfw`, `zsh-completions`, `zsh-autosuggestions`, `zsh-syntax-highlighting` | Shell modules, completion, suggestions and highlighting |
+| `gh`, `age`, `sops` | GitHub CLI or a specific secrets workflow |
+| `yq`, `httpie`, `wget` | YAML queries, HTTP APIs and downloads |
+| `openssl@3`, `sqlite`, `sqlc`, `tokei`, `less` | Crypto/TLS tooling, SQL, code generation, source statistics and paging |
+
+For GUI apps, the installation source is **Homebrew Cask**. Select apps separately
+with `brew install --cask NAME`; the Brewfile contains no GUI apps.
+
+| Cask | Manual setup |
+| --- | --- |
+| `ghostty` | Main terminal; config is `~/.config/ghostty/config` |
+| `visual-studio-code` | Enable the `code` command; choose language extensions |
+| `orbstack` | Review licensing, launch once and enable Docker integration |
+| `raycast` | Choose hotkey and permissions; check architecture support |
+| `obsidian` | Choose a vault and sync policy |
+
+OrbStack provides Docker tooling: do not add a second Docker CLI by default.
+After launching it, check `docker context show`, `docker version` and
+`docker compose version`. [OrbStack documentation](https://docs.orbstack.dev/docker/).
+For Ghostty, check for an older config in `~/Library/Application Support/com.mitchellh.ghostty/`
+before keeping two competing files. [Config locations](https://ghostty.org/docs/config).
+
+For VS Code, keep Workspace Trust and tool approvals enabled. Install extensions
+per project/language instead of a large global list; let extension dependencies
+supply companions such as Pylance. Do not copy old auto-approve, auto-reply or
+auto-accept settings. [VS Code security](https://code.visualstudio.com/docs/agents/run/security).
+
+## Git and SSH
+
+Git defaults live in `~/.config/git/config`. Your existing `~/.gitconfig` has higher
+priority and is not overwritten. Create or edit that exact file for your identity:
+
+```sh
+git config --file "$HOME/.gitconfig" user.name "Your Name"
+git config --file "$HOME/.gitconfig" user.email "you@example.com"
+git config --file "$HOME/.gitconfig" --edit
 ```
 
-#### 3.2 `~/.zshenv`
+Keep private overrides there or in `~/.config/git/local`. On a fresh home,
+`git config --global --edit` would open the managed `~/.config/git/config` instead
+if `~/.gitconfig` does not exist; a later chezmoi apply could overwrite those edits.
+[Git config file selection](https://git-scm.com/docs/git-config#Documentation/git-config.txt---global).
 
-```bash
-cat > ~/.zshenv <<'EOF'
-export HOMEBREW_NO_ANALYTICS=1
-export EDITOR="vim"
-export MANPAGER="less -R"
-EOF
+Delta is a pager, not a `diff.tool`. No global `core.ignorecase` or `core.fileMode`
+is set; Git should detect these per repository. Global ignore covers only macOS
+litter, leaving `.vscode`, dependencies and build outputs to each project's `.gitignore`.
+If migrating old settings, use `git config --show-origin --get KEY` to find overrides.
+
+For macOS SSH, reuse an existing key or create a passphrase-protected key with
+`ssh-keygen -t ed25519`; never overwrite an existing key. Use the session's agent
+instead of starting another one in every shell. In your own `~/.ssh/config`, add
+or adjust a host block using your actual key path:
+
+```sshconfig
+Host github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    AddKeysToAgent yes
+    UseKeychain yes
 ```
 
-#### 3.3 Install Zimfw
+Use `UseKeychain` only on macOS. Load the key with
+`/usr/bin/ssh-add --apple-use-keychain ~/.ssh/id_ed25519`, register its public key
+as an authentication key, and test `ssh -T git@github.com`.
+Verify a new host fingerprint against [GitHub's published fingerprints](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints).
+GitHub returns exit code 1 even after successful authentication because it offers no shell.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/zimfw/install/master/install.zsh | zsh
+SSH signing is a separate opt-in. Register a signing key with your Git host, then
+set `gpg.format=ssh` and `user.signingKey` to its `.pub` path in your local Git config.
+Keep the private key loaded in your agent. For local verification, set
+`gpg.ssh.allowedSignersFile` to a file containing your real email and public key:
+`EMAIL namespaces="git" ssh-ed25519 PUBLIC_KEY`. Test a signed commit with
+`git log -1 --show-signature` in a scratch repository before enabling
+`commit.gpgSign=true`. [Signing setup](https://docs.github.com/en/authentication/managing-commit-signature-verification/telling-git-about-your-signing-key).
+
+## Projects and CLI tips
+
+### Runtimes, tasks and agents
+
+Pin only the runtimes a project uses, e.g. `mise use --pin node@lts` in that project.
+Review and commit its `mise.toml`. The shared config enables mise's paranoid mode:
+inspect project tasks/configs before `mise trust ./mise.toml`, then `mise install`.
+[Trust behavior](https://mise.jdx.dev/paranoid.html).
+
+```sh
+mise exec -- node --version  # Project runtime, no interactive shell needed
+mise run test               # Run a task defined by the project
 ```
 
-#### 3.4 `~/.zimrc`
+Agents and CI need mise on PATH and the project's working directory; they must
+not depend on `.zshrc`. On Apple Silicon, `/opt/homebrew/bin/mise exec -- …` is an
+explicit entry point. Use the installed path on other systems.
 
-```bash
-cat >| ~/.zimrc <<'EOF'
-zmodule zimfw/archive
-zmodule zimfw/git
-zmodule zimfw/input
-zmodule zimfw/termtitle
+For Python, select Python with mise and dependencies with uv. Add pre-commit and
+Ruff to the project's dev dependencies with `uv add --dev pre-commit ruff`, then
+commit `pyproject.toml` and `uv.lock`. Use `uv run`, not a separate global tool install:
 
-# Theme (module options BEFORE init options)
-zmodule spaceship-prompt/spaceship-prompt -n spaceship -s "spaceship.zsh"
-
-# Plugins
-zmodule zsh-users/zsh-autosuggestions
-zmodule zdharma-continuum/fast-syntax-highlighting
-zmodule Aloxaf/fzf-tab
-
-# Build preferences
-zstyle ':zim' build autoload
-EOF
-
-# 2) Install missing modules and build the init
-zimfw install
-zimfw build
-
-# 3) Activate in current shell (or just open a new terminal)
-source "${ZDOTDIR:-$HOME}/.zim/init.zsh" 2>/dev/null || true
+```sh
+mise exec -- uv sync --locked --no-python-downloads
+mise exec -- uv run --locked pre-commit install       # After reviewing the hooks
+mise exec -- uv run --locked ruff format --check .    # CI: check without rewriting
+mise exec -- uv run --locked ruff format .            # Local: explicitly reformat
 ```
 
-#### 3.5 `~/.zshrc`
+Keep tokens, private keys, `.env` secrets and history databases out of Git and
+chezmoi. Use Keychain or a secret manager; history filters and gitignore are not
+security boundaries. [uv project workflow](https://docs.astral.sh/uv/concepts/projects/sync/).
 
-```bash
-cat >| ~/.zshrc <<'EOF'
-setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_VERIFY SHARE_HISTORY
-setopt AUTO_CD EXTENDED_GLOB INTERACTIVE_COMMENTS
-bindkey -v
-export KEYTIMEOUT=1
+### Everyday commands
 
-# Completions: add Homebrew dirs then init (cached)
-if command -v brew >/dev/null 2>&1; then
-  fpath=("$(brew --prefix)/share/zsh-completions" "$(brew --prefix)/share/zsh/site-functions" $fpath)
-fi
-autoload -Uz compinit
-compinit -C
-
-# Load Zim
-source "${ZDOTDIR:-$HOME}/.zim/init.zsh"
-
-# Prompt: Spaceship (inline overrides)
-export SPACESHIP_PROMPT_ADD_NEWLINE=true
-export SPACESHIP_CHAR_SYMBOL="❯ "
-export SPACESHIP_PROMPT_ORDER=(time user dir host git node golang docker venv python exec_time line_sep char)
-
-# Tooling hooks
-eval "$(zoxide init zsh)"
-eval "$(atuin init zsh)"
-# Global mise shims & env
-eval "$(mise activate zsh)"
-eval "$(uv generate-shell-completion zsh)"
-eval "$(uvx --generate-shell-completion zsh)"
-
-# fzf defaults
-export FZF_DEFAULT_COMMAND='rg --files --hidden --follow --glob "!.git"'
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND='fd -t d .'
-
-# Pager & bat
-export BAT_THEME="OneHalfDark"
-export PAGER="bat -p"
-
-# Aliases
-
-# --- navigation / directories ---
-alias ..='cd ..'
-alias ...='cd ../..'
-alias ....='cd ../../..'
-
-alias c='z'
-alias cd='z'
-
-# --- ls / eza ---
-alias ls='eza --group-directories-first'
-alias ll='ls -l --git'
-alias la='ls -la --git'
-alias lt='ls -T -L 2 --git'
-
-# --- cat / bat / pager ---
-# PAGER is already set to bat in your config; these make direct usage nice.
-alias cat='bat --paging=never'       # behaves close to cat, no paging
-alias less='bat'                     # whenever you type "less", you get bat pager
-
-# --- grep / ripgrep ---
-# Not 100% drop-in (options differ), but great for interactive usage.
-alias grep='rg --hidden --glob "!.git"'
-alias rgp='rg --hidden --glob "!.git"'
-
-# --- find / fd ---
-# fd is *not* a drop-in for find, so keep the real find for scripts & weird flags?
-alias find='fd --hidden --follow --exclude .git'
-
-# If you really want "find" to yell at you so you stop using it manually:
-# alias find='echo "Use fd (ff) instead" >&2'
-
-# --- processes / system info ---
-alias top='btop'
-alias ps='procs'
-alias du='dust'     # disk usage summary
-alias df='duf'      # disk free
-
-# --- git quality-of-life ---
-alias g='git'
-alias ga='git add'
-alias gc='git commit'
-alias gco='git checkout'
-alias gst='git status -sb'
-alias gl='git log --oneline --graph --decorate'
-
-# --- sudo last command ---
-alias please='sudo $(fc -ln -1)'
-
-zmodload zsh/complist 2>/dev/null
-EOF
+```sh
+rg -n 'TODO|FIXME' src                  # Search project contents
+fd --type f --extension go             # Find files, respecting ignore rules
+fd --type f --print0 | fzf --read0 --print0  # NUL-delimited selection for scripts
+z project                             # Jump to a visited directory
+zi                                    # Choose a visited directory with fzf
+atuin search 'git rebase'              # Search local command history
+jq '.scripts' package.json            # Inspect JSON
+git diff                              # Delta renders the diff
+git log --oneline --graph -20
 ```
 
-### Step 4 — Languages & toolchains (mise)
+Quote paths. Avoid splitting filenames with `awk -F:` or whitespace-based `xargs`;
+for arbitrary filenames, keep NUL delimiters throughout a pipeline. In Ghostty,
+Ctrl-T inserts selected paths into the command line; `z` never replaces `cd`.
 
-```bash
-mise use -g python@3.14
-mise use -g golang@1.25
-mise use -g node@lts
+More installed tools: `bat README.md`, `eza -la`, `btop`, `dust .`,
+`hyperfine 'your-command'`, or `watchexec -e go -- go test ./...`.
+For long sessions use `tmux new -s work`, detach with Ctrl-B then D, and return
+with `tmux attach -t work`.
+
+## Updates and checks
+
+```sh
+brew update
+brew upgrade --formula                    # All installed CLI, no GUI
+brew upgrade --cask --greedy ghostty        # Only the named GUI app; close it first
+brew bundle check --no-upgrade --file=Brewfile
+zimfw update                              # Downloaded Zim modules; in interactive zsh
+chezmoi diff
+chezmoi verify
 ```
 
-### Step 5 — Go tools (built with mise’s Go)
-
-```bash
-go install golang.org/x/tools/gopls@latest
-go install golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest
-go install github.com/go-delve/delve/cmd/dlv@latest
-go install honnef.co/go/tools/cmd/staticcheck@latest
-go install mvdan.cc/gofumpt@latest
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-go install golang.org/x/vuln/cmd/govulncheck@latest
-go install -tags 'postgres mysql sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-```
-
-### Step 6 — Python fast path (`uv`)
-
-```bash
-uv tool install ruff
-uv tool install pre-commit
-```
-
-Reshim:
-
-```bash
-mise reshim
-```
-
-### Step 7 — Git sane defaults
-
-```bash
-git config --global init.defaultBranch main
-git config --global pull.rebase true
-git config --global rebase.autosquash true
-git config --global rebase.autoStash true
-git config --global fetch.prune true
-git config --global push.autoSetupRemote true
-git config --global core.fileMode false
-git config --global core.ignorecase false
-git config --global color.ui auto
-git config --global merge.conflictstyle zdiff3
-git config --global diff.tool delta
-git config --global credential.helper osxkeychain
-
-cat > ~/.gitignore_global <<'EOF'
-.DS_Store
-.idea/
-.vscode/
-venv/
-__pycache__/
-*.pyc
-dist/
-node_modules/
-coverage/
-EOF
-git config --global core.excludesfile ~/.gitignore_global
-```
-
-#### 7.1 — SSH keys and commit signing (recommended)
-
-Generate an SSH key, store the passphrase in Keychain, and enable SSH-based commit signing.
-
-```bash
-# Generate key (ed25519)
-ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C "$USER@$(scutil --get ComputerName)"
-
-# Start agent and store key in macOS Keychain
-eval "$(ssh-agent -s)"
-ssh-add --apple-use-keychain ~/.ssh/id_ed25519
-
-# Git: sign commits with SSH
-git config --global gpg.format ssh
-git config --global user.signingkey ~/.ssh/id_ed25519.pub
-git config --global commit.gpgsign true
-
-# Add your public key to your Git host (GitHub, GitLab, etc.)
-pbcopy < ~/.ssh/id_ed25519.pub  # copies the key to clipboard (macOS)
-open https://github.com/settings/ssh/new || true
-
-# Authenticate GitHub CLI (optional)
-gh auth login
-```
-
-### Step 8 — GUI apps (Homebrew Cask + MAS)
-
-Install GUI apps available via Homebrew Cask:
-
-```bash
-brew install --cask \
-  visual-studio-code \
-  ghostty \
-  warp \
-  raycast \
-  beekeeper-studio \
-  insomnia \
-  stats \
-  orbstack \
-  google-chrome \
-  telegram \
-  discord \
-  github \
-  chatgpt \
-  chatgpt-atlas \
-  ledger-live \
-  steam \
-  prismlauncher \
-  logi-options+ \
-  applite \
-  orcaslicer \
-  codex \
-  obsidian
-
-# After launching VS Code once, enable the `code` shell command from the Command Palette
-```
-
-Install App Store apps via `mas` (sign in to App Store first):
-
-```bash
-# Ensure you are signed in to the Mac App Store app
-open -a "App Store"  # Sign in if needed, then close
-
-# Apple iWork (Office) apps
-mas install 409201541  # Pages
-mas install 409203825  # Numbers
-mas install 409183694  # Keynote
-```
-
-### Step 9 — Verify the toolchain
-
-```bash
-zsh --version
-brew doctor
-zimfw --version
-docker version
-mise doctor
-python --version
-go version
-fzf --version
-zoxide --version
-atuin --version
-btop --version
-```
-
-## VS Code setup
-
-```bash
-# AI
-code --install-extension openai.chatgpt --profile "main"
-code --install-extension GitHub.copilot --profile "main"
-code --install-extension GitHub.copilot-chat --profile "main"
-
-# Git (lightweight)
-code --install-extension mhutchie.git-graph --profile "main"
-
-# Diagnostics / UX
-code --install-extension usernamehw.errorlens --profile "main"
-code --install-extension Gruntfuggly.todo-tree --profile "main"
-
-# Web + lint/format
-code --install-extension dbaeumer.vscode-eslint --profile "main"
-code --install-extension esbenp.prettier-vscode --profile "main"
-
-# Python + Jupyter
-code --install-extension ms-python.python --profile "main"
-code --install-extension ms-python.vscode-pylance --profile "main"
-code --install-extension ms-toolsai.jupyter --profile "main"
-code --install-extension ms-toolsai.jupyter-renderers --profile "main"
-code --install-extension ms-toolsai.jupyter-keymap --profile "main"
-
-# Go / YAML / Markdown
-code --install-extension golang.go --profile "main"
-code --install-extension redhat.vscode-yaml --profile "main"
-code --install-extension yzhang.markdown-all-in-one --profile "main"
-
-# Remote & Containers
-code --install-extension ms-vscode-remote.remote-ssh --profile "main"
-code --install-extension ms-vscode-remote.remote-containers --profile "main"
-code --install-extension ms-vscode.remote-server --profile "main"
-code --install-extension ms-vscode.remote-explorer --profile "main"
-code --install-extension ms-azuretools.vscode-docker --profile "main"
-
-# Icons (keep Material; drop vscode-icons)
-code --install-extension PKief.material-icon-theme --profile "main"
-code --install-extension PKief.material-product-icons --profile "main"
-
-# Build tools (Makefile not used; skip Makefile Tools)
-
-# Code Runner (one-shot run scripts across many langs)
-code --install-extension formulahendry.code-runner --profile "main"
-
-# Rainbow CSV (colorized columns + CSV helpers)
-code --install-extension mechatroner.rainbow-csv --profile "main"
-
-# Mermaid for Markdown/Notebooks (keeps Mermaid current)
-code --install-extension bierner.markdown-mermaid --profile "main"
-
-# Image preview (inline gutter/hover previews of image links)
-code --install-extension kisstkondoros.vscode-gutter-preview --profile "main"
-
-# Python: fast lint/format (ruff) – replaces/augments black/flake8/isort
-code --install-extension charliermarsh.ruff --profile "main"
-
-# TOML (pyproject/go toolchains use TOML a lot)
-code --install-extension tamasfe.even-better-toml --profile "main"
-
-# HTML tag QoL (IntelliJ-like paired tag ops)
-code --install-extension formulahendry.auto-rename-tag --profile "main"
-code --install-extension formulahendry.auto-close-tag --profile "main"
-
-# GitHub PRs/Issues panel (JetBrains-like VCS integration)
-code --install-extension GitHub.vscode-pull-request-github --profile "main"
-
-```
-
-and settings.json:
-
-```json
-{
-  // Theme & Icons
-  "workbench.colorTheme": "GitHub Dark Default",
-  "workbench.iconTheme": "material-icon-theme",
-  "workbench.productIconTheme": "material-product-icons",
-
-  // Layout / UX
-  "workbench.activityBar.location": "top",
-  "editor.minimap.enabled": false,
-  "editor.inlayHints.enabled": "on",
-  "editor.smoothScrolling": true,
-  "editor.stickyScroll.enabled": true,
-  "breadcrumbs.enabled": true,
-
-  // Save / format
-  "files.autoSave": "afterDelay",
-  "files.autoSaveDelay": 700,
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": "explicit",
-    "source.fixAll.eslint": "explicit"
-  },
-
-  // Python / Jupyter
-  "python.analysis.typeCheckingMode": "basic",
-  "python.testing.pytestEnabled": true,
-  "notebook.lineNumbers": "on",
-  "notebook.output.textLineLimit": 2000,
-  "notebook.output.scrolling": true,
-
-  // Go
-  "gopls": {
-    "ui.semanticTokens": true,
-    "ui.completion.usePlaceholders": true
-  },
-
-  // YAML
-  "yaml.schemaStore.enable": true,
-  "yaml.format.enable": true,
-  "yaml.validate": true,
-
-  // Markdown
-  "markdown.updateLinksOnFileMove.enabled": "always",
-
-  // Git (built-in)
-  "git.autoStash": true,
-  "git.autofetch": true,
-  "git.pruneOnFetch": true,
-  "git.enableSmartCommit": true,
-  "git.confirmSync": false,
-  "git.mergeEditor": true,
-  "git.blame.editorDecoration.enabled": true,
-  "git.blame.statusBarItem.enabled": true,
-
-  // Terminal & files
-  "terminal.integrated.scrollback": 10000,
-  "search.useIgnoreFiles": true,
-  "files.exclude": {
-    "**/.DS_Store": true,
-    "**/.idea": true,
-    "**/node_modules": true,
-    "**/dist": true,
-    "**/build": true,
-    "**/.pytest_cache": true,
-    "**/__pycache__": true,
-    "**/.mypy_cache": true,
-    "**/.ruff_cache": true,
-    "**/.venv": true
-  },
-
-  // Tag rename/close without extensions
-  "editor.linkedEditing": true,
-
-  // Error Lens
-  "errorLens.enabledDiagnosticLevels": ["warning", "info", "error"],
-  "errorLens.messageEnabled": false,
-
-  // --- IntelliJ-ish editor behavior ---
-  "workbench.editor.enablePreview": false, // open files as real tabs, not preview
-  "editor.inlineSuggest.enabled": true, // lightweight inline hints (pairs well with Copilot)
-  "editor.cursorSurroundingLines": 5,
-  "editor.guides.bracketPairs": "active",
-  "editor.bracketPairColorization.enabled": true,
-
-  // --- Save / format (language-scoped defaults) ---
-  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
-  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
-  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
-  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
-  "[markdown]": { "editor.defaultFormatter": "DavidAnson.vscode-markdownlint" },
-  "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit",
-      "source.organizeImports": "explicit"
-    }
-  },
-
-  // --- Explorer: file nesting ---
-  "explorer.fileNesting.enabled": true,
-  "explorer.fileNesting.patterns": {
-    "*.ts": "${capture}.test.ts, ${capture}.spec.ts, ${capture}.d.ts, ${capture}.map",
-    "*.tsx": "${capture}.test.tsx, ${capture}.spec.tsx, ${capture}.map",
-    "*.js": "${capture}.test.js, ${capture}.spec.js, ${capture}.map",
-    "*.go": "${capture}_test.go",
-    "README.md": "CHANGELOG.md, CONTRIBUTING.md, LICENSE*",
-    "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, .npmrc",
-    "go.mod": "go.sum"
-  },
-
-  // --- Project hygiene ---
-  "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true,
-
-  // Completions
-  "github.copilot.enable": {
-    "*": true,
-    "plaintext": true,
-    "markdown": true,
-    "scminput": true
-  },
-  "github.copilot.nextEditSuggestions.enabled": true,
-  "editor.inlineSuggest.minShowDelay": 1000,
-  "editor.inlineSuggest.edits.allowCodeShifting": "always",
-
-  // Agent Mode: on + bigger budget
-  "chat.agent.enabled": true,
-  "chat.agent.maxRequests": 200,
-  "github.copilot.chat.agent.autoFix": true,
-
-  "chat.tools.terminal.enableAutoApprove": true,
-  "chat.tools.terminal.autoApprove": {
-    // Keep these blocked
-    "chmod": false,
-    "chown": false,
-    "git": false
-  },
-
-  // Let Copilot answer terminal prompts on its own
-  "chat.tools.terminal.autoReplyToPrompts": true,
-
-  // Auto-accept edit suggestions after a short delay (ms)
-  "chat.editing.autoAcceptDelay": 100,
-
-  // Give Copilot more context for better autonomous changes
-  "github.copilot.chat.codesearch.enabled": true,
-  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
-  "chat.useAgentsMdFile": true,
-  "github.copilot.chat.editor.temporalContext.enabled": true
-}
-```
-
----
-
-## Reference: Notes & Snippets
-
-### Install locations worth knowing
-
-- **mise** selects language/tool versions; it does not host packages itself.
-- **Go** `go install …` drops binaries in `~/go/bin` (or `$GOBIN`), compiled with Go **1.25** (managed by mise).
-- **uv (global tools)** installs shims in `~/.local/bin` with tool data in `~/Library/Application Support/uv/tools/...`.
-- **uv (per-project)** uses `uv venv` + `uv sync` in `./.venv`, leveraging Python from mise.
-
-### Go modernization (optional)
-
-Modernize analyzes code and suggests adopting newer Go idioms and features.
-
-- Review suggestions: `modernize ./...`
-- Apply in place: `modernize -w ./...`
-- Via tasks: `mise run modernize` or `mise run modernize-apply`
-
-#### mise.toml
-
-```toml
-# mise.toml
-[tools]
-python = "3.14"
-golang = "1.25"
-
-[env]
-# Put simple env vars here
-PIP_DISABLE_PIP_VERSION_CHECK = "1"
-
-[tasks.bootstrap]
-description = "First-time setup: venv + deps + git hooks"
-run = '''
-if [ ! -d ".venv" ]; then
-  uv venv
-fi
-uv sync
-uv run pre-commit install -f --install-hooks
-'''
-
-[tasks.test]
-description = "Run Python tests (pytest)"
-run = "uv run pytest -q"
-
-[tasks.test-go]
-description = "Run Go tests"
-run = "go test ./..."
-
-[tasks.precommit]
-run = "uv run pre-commit run --all-files"
-
-[tasks.fmt]
-description = "Format code (ruff + gofumpt)"
-run = '''
-ruff format .
-gofumpt -w .
-'''
-
-[tasks.lint]
-description = "Lint (ruff + golangci-lint)"
-run = '''
-ruff check .
-golangci-lint run
-'''
-
-[tasks.modernize]
-description = "Suggest Go modernizations"
-run = "modernize ./..."
-
-[tasks.modernize-apply]
-description = "Apply Go modernizations (writes)"
-run = "modernize -w ./..."
-
-[tasks.sync]
-description = "Sync Python deps (uv)"
-run = "uv sync"
-
-[tasks.ci]
-run = '''
-mise run fmt
-mise run lint
-mise run test
-mise run test-go
-'''
-```
-
-Usage:
-
-- First time: `mise install` then `mise run bootstrap`
-- Later: `mise run test` and `mise run precommit`
-- If you use hooks: you may need `mise trust` once to allow hooks
-- Go modernization: `mise run modernize` (review) or `mise run modernize-apply` (apply)
-
-#### `pyproject.toml` (Ruff formatting & linting)
-
-```toml
-[project]
-name = "yourpkg"
-version = "0.1.0"
-requires-python = ">=3.14"
-
-[tool.ruff]
-line-length = 100
-target-version = "py314"
-
-[tool.ruff.format]
-quote-style = "double"
-
-[tool.ruff.lint]
-select = ["E","F","I","UP","B","C90","PERF","N","RUF"]
-ignore = []
-```
-
-#### .pre-commit-config.yaml
-
-```yaml
-# .pre-commit-config.yaml
-repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.0
-    hooks:
-      - id: ruff
-      - id: ruff-format
-
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v2.6.0
-    hooks:
-      - id: golangci-lint
-
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.3
-    hooks:
-      - id: gitleaks
-
-```
-
-#### `.golangci.yml` (compact defaults)
-
-```yaml
-version: "2"
-
-run:
-  tests: true
-  modules-download-mode: readonly
-  go: "1.25"
-
-linters:
-  default: none
-  enable:
-    - govet
-    - staticcheck
-    - errcheck
-    - ineffassign
-    - unused
-    - revive
-  exclusions:
-    generated: lax
-    presets:
-      - std-error-handling
-      - common-false-positives
-
-issues:
-  new: true
-  new-from-merge-base: main
-  max-issues-per-linter: 0
-  max-same-issues: 0
-
-formatters:
-  enable:
-    - gofumpt
-  # Optional: uncomment and set your module for stricter formatting
-  # settings:
-  #   gofumpt:
-  #     module-path: github.com/yourorg/yourrepo
-```
-
-### Cheatsheet
-
-```bash
-# =========
-# Navigation & history — zoxide, atuin, fzf
-# =========
-z foo                # jump to a directory you've visited matching "foo" (zoxide)
-zi proj              # interactive dir jump (zoxide) with fzf UI
-# history: fuzzy search across all shells (atuin). Try: Ctrl-R, then type
-atuin search "docker run"    # non-interactive history search
-
-# =========
-# Find & search — ripgrep, fd, fzf
-# =========
-rg -n "TODO|FIXME"                    # fast code search with line numbers
-fd -t d src                           # list directories under ./src
-# open a ripgrep match in $EDITOR via fzf (preview on the right)
-rg --line-number --no-heading --color=always 'TODO|FIXME' \
-| fzf --ansi --delimiter : \
-      --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
-| awk -F: '{print "+"$2" "$1}' \
-| xargs -r ${EDITOR:-vim}
-
-# =========
-# Listing & viewing — eza, bat, less
-# =========
-ll                                   # long view with git info (alias to eza)
-lt                                   # small tree (alias to eza -T -L 2)
-bat README.md                        # pretty file view with syntax highlighting
-less -R +G big.log                   # open at end, keep ANSI colors
-
-# =========
-# JSON/YAML — jq, yq
-# =========
-curl -s https://httpbin.org/get | jq '.headers."User-Agent"'
-yq '.spec.template.spec.containers[].image' k8s/deploy.yaml
-
-# =========
-# Git & GitHub — git, delta, gh
-# =========
-git log --oneline --graph --decorate -20 | less -R
-git diff                              # rendered with delta (pager config)
-gh repo clone owner/repo
-gh pr create --fill --draft && gh pr view --web
-
-# =========
-# Per-project env & tools — mise, uv
-# =========
-mise use -g python@3.14 golang@1.25  # set global toolchains
-mise run bootstrap                   # project setup (venv + deps + hooks)
-mise run fmt && mise run lint        # format and lint via tasks
-
-# uv basics (project-local Python)
-uv venv                              # create .venv in the project
-uv sync                              # install/update deps from pyproject/lock into .venv
-uv run pytest -q                     # run in the project's .venv
-ruff check .                         # use global ruff (via mise or brew)
-source .venv/bin/activate            # optional: activate venv for interactive shell
-
-# =========
-# System monitors — btop, duf, dust, procs
-# =========
-btop                                  # interactive CPU/Mem/Proc/Net dashboard
-duf                                   # mounted disks usage (human-friendly)
-dust -r . | head                      # "du" but readable, largest dirs first
-procs --watch 2                       # modern 'ps' with live refresh
-
-# =========
-# HTTP & downloads — httpie, wget, openssl
-# =========
-http GET https://api.github.com/repos/owner/repo
-http POST https://httpbin.org/post hello=world
-wget -qO artifact.tgz https://example.com/build.tgz
-openssl dgst -sha256 artifact.tgz     # verify checksum
-
-# =========
-# Secrets — age, sops (with age)
-# =========
-age-keygen -o ~/.config/age/key.txt
-export SOPS_AGE_KEY_FILE=~/.config/age/key.txt
-sops -e -i secrets.yaml               # edit+encrypt in place
-sops -d secrets.yaml > secrets.clear.yaml
-```
+App updaters may also update their own bundles; do not disable security updates.
+Review repository changes before applying dotfiles again. Brewfile records the tool
+set, not exact binary versions; pin project dependencies separately. No automatic
+cleanup, service startup or OS preference changes are part of this setup.
+
+CI renders and reapplies dotfiles in a temporary home on macOS and Linux. It checks
+Git identity persistence, zsh syntax and login Homebrew initialization on macOS.
+It does not install Zim modules or exercise GUI/Keychain integration.
+
+## Later platforms
+
+Steam Deck needs a SteamOS-specific plan: verify writable paths and persistence
+across updates before system package changes; [Valve warns about packages outside Flatpak](https://help.steampowered.com/en/faqs/view/671A-4453-E8D2-323C).
+A Proxmox hypervisor should get only necessary administration tools, not a desktop
+stack. Ubuntu VM and LXC guests need separate provisioning and privilege checks.
+No installers for these platforms are included, and user dotfiles are never meant
+for automatic application to root.
