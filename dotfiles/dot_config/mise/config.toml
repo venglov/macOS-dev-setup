@@ -1,3 +1,0 @@
-# Runtimes belong in reviewed, versioned project mise.toml files.
-[settings]
-paranoid = true

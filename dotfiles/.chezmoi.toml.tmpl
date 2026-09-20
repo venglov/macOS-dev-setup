@@ -1,5 +1,0 @@
-{{- $zsh := promptBoolOnce . "zsh" "Manage zsh startup files" (eq .chezmoi.os "darwin") -}}
-sourceDir = {{ .chezmoi.sourceDir | quote }}
-
-[data]
-zsh = {{ $zsh }}

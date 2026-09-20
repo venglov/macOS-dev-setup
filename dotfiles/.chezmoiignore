@@ -1,9 +1,0 @@
-{{ if not .zsh }}
-.zshenv
-.zprofile
-.zshrc
-.zimrc
-{{ end }}
-{{ if ne .chezmoi.os "darwin" }}
-.config/ghostty
-{{ end }}
